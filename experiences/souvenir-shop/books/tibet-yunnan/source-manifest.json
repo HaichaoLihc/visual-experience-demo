@@ -1,0 +1,314 @@
+{
+  "title": "西藏和云南之行",
+  "selected_photo_count": 38,
+  "page_count": 42,
+  "page_ratio": "3:5",
+  "spread_ratio": "6:5",
+  "sources": [
+    {
+      "id": "P010",
+      "file": "17.heic",
+      "sha256": "5f82e01a94d14298bc95b430d479f70fb6795e5a3de315b2443d811ba8773431"
+    },
+    {
+      "id": "P023",
+      "file": "28da4c1783bb0985720d1d14bdf1a3f6.JPG",
+      "sha256": "4d17345baa1cbe8b01fcd2f6792e16b4b90b488c656100a58b18201b3ff65c61"
+    },
+    {
+      "id": "P037",
+      "file": "432.JPG",
+      "sha256": "902d42722d93018e16943a570db8d432663131462d6e7237f224ce75777f3172"
+    },
+    {
+      "id": "P047",
+      "file": "542.JPG",
+      "sha256": "8dc14f85f9f4ebd13290abedb7a097e98408e14d9fc65f612d8259001dc890d5"
+    },
+    {
+      "id": "P054",
+      "file": "669125873d79e4d62d3578bf0c98f1f6.JPG",
+      "sha256": "bd82371aba5b8c5577927c5eb3912bd3d90aaaa14d6dfbbc2f7cbc56c8ca7c17"
+    },
+    {
+      "id": "P081",
+      "file": "dji_export_20260818_photo_0002.heic",
+      "sha256": "3c300c1f4aba521c7cbf93c48856841e2880456e84e4f9a8c82d1105a2b191c6"
+    },
+    {
+      "id": "P092",
+      "file": "dji_mimo_20260817_093654_20260817093655_1786973297579_photo.JPG",
+      "sha256": "81eb92513071d5b9b08322482b27af5080a7dfcdad87e6ac164b715f64787dfa"
+    },
+    {
+      "id": "P103",
+      "file": "IMG_2826.jpg",
+      "sha256": "8a482129d2567d5fca9ebc13605de148d348a81f2d84d6fe1c326c939f1f1705"
+    },
+    {
+      "id": "P122",
+      "file": "IMG_3345.jpg",
+      "sha256": "76e0fa91f8de972be1f51af327d92a63ef001f62fb5928194722834995d05826"
+    },
+    {
+      "id": "P123",
+      "file": "IMG_3472.jpg",
+      "sha256": "b598cd9f8b7af02c06a28b8aa48de1724601310dcf54d1bedd5ebd5276113945"
+    },
+    {
+      "id": "P140",
+      "file": "IMG_3618.jpg",
+      "sha256": "3ae86f064e1626171995ac3b30b6cf67372faa669dbab579eeaa2d9dedef239b"
+    },
+    {
+      "id": "P143",
+      "file": "IMG_3650.jpg",
+      "sha256": "06f2181c8ea43e327c06b7309a2f43d6a3b1a3fe2f0e4640ab829ab7a889b722"
+    },
+    {
+      "id": "P147",
+      "file": "IMG_4587.jpg",
+      "sha256": "b1dc33b940814e0621a84310a63a9ed8c1dedeead86e2ab2d8e9225aa4558dcd"
+    },
+    {
+      "id": "P154",
+      "file": "IMG_4630.jpg",
+      "sha256": "09b9f3035ea21a6667ae6becd088dd2e303bc03f05ec10900938b96a29170427"
+    },
+    {
+      "id": "P159",
+      "file": "IMG_4638.jpg",
+      "sha256": "68fefae5fd6d6e21891f9f7c9e3a8c7a469e888719baeab4b6cec869ef5b6821"
+    },
+    {
+      "id": "P167",
+      "file": "IMG_4701.heic",
+      "sha256": "710453cccf1996a24b3f27e0e97d7863aa788e100b387f5868c8901d28f6a8e9"
+    },
+    {
+      "id": "P179",
+      "file": "IMG_4780.heic",
+      "sha256": "8ca47772e5fb0aef55bdd88e8bbca7dfdf484842fd42fed6c371c570316326e3"
+    },
+    {
+      "id": "P186",
+      "file": "IMG_4789.heic",
+      "sha256": "3b775ed3781d99f136b4a7d81ee1a567284b765da563f76c6fb1e89e89817e13"
+    },
+    {
+      "id": "P190",
+      "file": "IMG_4793.heic",
+      "sha256": "f40185a248f3fe76e6b2f6b0d8d2127abe143ab58795ccc91c20c4bfdda59e4e"
+    },
+    {
+      "id": "P194",
+      "file": "IMG_4798.heic",
+      "sha256": "fa9c1525a04c0c6573e4c6ea7f501efb63432c81c8d5a96f577da88d04db0353"
+    },
+    {
+      "id": "P199",
+      "file": "IMG_4803.heic",
+      "sha256": "7f1d34bd31c69e0ec6506d512657ba14c422636de61aecbad8986ccf987ffc18"
+    },
+    {
+      "id": "P202",
+      "file": "IMG_4806.heic",
+      "sha256": "c0cceef386ee873a60b5cfec53e3bfbf3709a32cb97bf6fa539bdaca2d89dad5"
+    },
+    {
+      "id": "P206",
+      "file": "IMG_4834.jpg",
+      "sha256": "cc29b2a9f88e76a0b8727f26a0c252e5baeec9fc3e82d4f1fffa1a329fcac887"
+    },
+    {
+      "id": "P210",
+      "file": "IMG_4845.jpg",
+      "sha256": "c5fbd881895e4f4ff0358f7fa937aae46d90319fa1d96ddc48968cc76e9ee4c7"
+    },
+    {
+      "id": "P219",
+      "file": "IMG_5046.heic",
+      "sha256": "aff5ad80c9b76f74b172cd035523f36daa0ff1a0c831f6202b40c9302e4e9198"
+    },
+    {
+      "id": "P223",
+      "file": "IMG_5053.heic",
+      "sha256": "022f5d4260884f28671432f32899e34265e68abcd44307e01c8e354895d87039"
+    },
+    {
+      "id": "P226",
+      "file": "IMG_5213.heic",
+      "sha256": "d9e255acfb45aaf034303cd5683583b1834a5dad5fdce66e5df4df66a5fc0794"
+    },
+    {
+      "id": "P227",
+      "file": "IMG_5214.heic",
+      "sha256": "7a9ceb2bdc406f7fdb5cc7786d0cfd3663f341f400cdf9a1fa85848bdb835af1"
+    },
+    {
+      "id": "P249",
+      "file": "IMG_5710.HEIC",
+      "sha256": "b54f5335ab347881ded8a14123b6c32ff7fbf31aae881ed87fc7b14794c01939"
+    },
+    {
+      "id": "P253",
+      "file": "IMG_5714 2.HEIC",
+      "sha256": "edad0ac295e0bbfc48ff78015e69d2c35f0f48b1928dc0e7a16ae7c53318d3fb"
+    },
+    {
+      "id": "P259",
+      "file": "IMG_5717.HEIC",
+      "sha256": "63a7bca771385fe99ab3afaaec6add4e324a2dc0792e5730aa6555ff4c47b1ef"
+    },
+    {
+      "id": "P265",
+      "file": "IMG_5738.HEIC",
+      "sha256": "5d0c79db4101f490a28c3568d7ef2825eca0fc5f32e83852d7aa9ccb77e624da"
+    },
+    {
+      "id": "P271",
+      "file": "IMG_5831 2.HEIC",
+      "sha256": "53eac3a277b738e57dc976bd810b992a9d621fc97603c004227e32c2ee6ee779"
+    },
+    {
+      "id": "P274",
+      "file": "IMG_5883.HEIC",
+      "sha256": "f1e0b9a87fb0852376b3f8dcb11d46e3e7e296c71971645db1c4356f6b169632"
+    },
+    {
+      "id": "P278",
+      "file": "IMG_5887.HEIC",
+      "sha256": "0edecec375cdb6d61812d77768984709aa9b1612b8bf8ccd68e7fd3db9f16261"
+    },
+    {
+      "id": "P283",
+      "file": "IMG_5896.HEIC",
+      "sha256": "d621fb019042a9f9b8e31e1d67a107c00bdf3d3f5bea6fae3e7a33a90f392cbb"
+    },
+    {
+      "id": "P284",
+      "file": "IMG_5897.HEIC",
+      "sha256": "81610473673e2567868f6bdd3a38edf2434299dfb0c560b40fe60ab93bef6afc"
+    },
+    {
+      "id": "P286",
+      "file": "IMG_5900.HEIC",
+      "sha256": "8f319bfe0f30ddd2cfca67e8f3471294144ae8cf4fb46a0b447114e606e02ec5"
+    }
+  ],
+  "spread_sources": [
+    [
+      "P278"
+    ],
+    [
+      "P140",
+      "P143"
+    ],
+    [
+      "P147",
+      "P159"
+    ],
+    [
+      "P154",
+      "P167"
+    ],
+    [
+      "P179",
+      "P190"
+    ],
+    [
+      "P186",
+      "P202"
+    ],
+    [
+      "P010"
+    ],
+    [
+      "P206",
+      "P194"
+    ],
+    [
+      "P210",
+      "P199"
+    ],
+    [
+      "P081",
+      "P092"
+    ],
+    [
+      "P219",
+      "P223"
+    ],
+    [
+      "P226",
+      "P227"
+    ],
+    [
+      "P259",
+      "P265"
+    ],
+    [
+      "P249",
+      "P253"
+    ],
+    [
+      "P122",
+      "P286"
+    ],
+    [
+      "P037",
+      "P047"
+    ],
+    [
+      "P103",
+      "P123"
+    ],
+    [
+      "P054",
+      "P274"
+    ],
+    [
+      "P283",
+      "P284"
+    ],
+    [
+      "P023",
+      "P271"
+    ],
+    [
+      "user-postcard-original"
+    ]
+  ],
+  "spread_titles": [
+    "外封",
+    "出发之前",
+    "窗内与门前",
+    "池边慢时光",
+    "山路",
+    "水与石",
+    "云端小坐",
+    "一路同行",
+    "随身之物",
+    "水与天空",
+    "草甸相遇",
+    "云层之上",
+    "墙的温度",
+    "白塔与旧墙",
+    "辽阔之间",
+    "风的形状",
+    "湖边来客",
+    "驶向湖岸",
+    "再停留片刻",
+    "远方留下",
+    "写给自己的明信片 · 原图"
+  ],
+  "note": "原有旅行书页保持不变；末尾文字后记已替换为左页留白、右页明信片原图。网页按 contain 显示原图，不裁切、不调色。",
+  "additional_image_sources": [
+    {
+      "id": "user-postcard-original",
+      "file": "assets/pages/postcard-original.jpg",
+      "sha256": "d0c6c04999a7f364cb70c4b05b9217b53f7390e0300badb3d26b1ee59d1f61ce",
+      "note": "用户原图未经修改；位于第 41 页，左侧第 40 页留白。"
+    }
+  ]
+}

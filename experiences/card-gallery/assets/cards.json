@@ -1,0 +1,345 @@
+[
+  {
+    "name": "Pink blossoms",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/106.jpg",
+    "alt": "Pink blossoms",
+    "photographer": "Arvee Marie"
+  },
+  {
+    "name": "Muted grain field",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/107.jpg",
+    "alt": "Muted grain field",
+    "photographer": "Lukas Schweizer"
+  },
+  {
+    "name": "Palms in haze",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/108.jpg",
+    "alt": "Palms in haze",
+    "photographer": "Florian Klauer"
+  },
+  {
+    "name": "Sunlight through woodland",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/109.jpg",
+    "alt": "Sunlight through woodland",
+    "photographer": "Zwaddi"
+  },
+  {
+    "name": "Golden grasses",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/112.jpg",
+    "alt": "Golden grasses",
+    "photographer": "Zugr"
+  },
+  {
+    "name": "Mountains through fog",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/114.jpg",
+    "alt": "Mountains through fog",
+    "photographer": "Brian Gonzalez"
+  },
+  {
+    "name": "Wet stone detail",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/115.jpg",
+    "alt": "Wet stone detail",
+    "photographer": "Christian Hebell"
+  },
+  {
+    "name": "Field path",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/116.jpg",
+    "alt": "Field path",
+    "photographer": "Anton Sulsky"
+  },
+  {
+    "name": "Fence at night",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/120.jpg",
+    "alt": "Fence at night",
+    "photographer": "Guillaume"
+  },
+  {
+    "name": "Monochrome mountain valley",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/121.jpg",
+    "alt": "Monochrome mountain valley",
+    "photographer": "Radio Pink"
+  },
+  {
+    "name": "London river architecture",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/122.jpg",
+    "alt": "London river architecture",
+    "photographer": "Vadim Sherbakov"
+  },
+  {
+    "name": "Boat on turquoise water",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/124.jpg",
+    "alt": "Boat on turquoise water",
+    "photographer": "Anton Sulsky"
+  },
+  {
+    "name": "Lakeside grasses",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/125.jpg",
+    "alt": "Lakeside grasses",
+    "photographer": "Rick Waalders"
+  },
+  {
+    "name": "Water surface",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/126.jpg",
+    "alt": "Water surface",
+    "photographer": "Zugr"
+  },
+  {
+    "name": "Mountain lake",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/128.jpg",
+    "alt": "Mountain lake",
+    "photographer": "Matteo Minelli"
+  },
+  {
+    "name": "Waterfront in mist",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/131.jpg",
+    "alt": "Waterfront in mist",
+    "photographer": "Charlie Foster"
+  },
+  {
+    "name": "Sunset shoreline",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/132.jpg",
+    "alt": "Sunset shoreline",
+    "photographer": "Peter Besser"
+  },
+  {
+    "name": "Bridge structure",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/134.jpg",
+    "alt": "Bridge structure",
+    "photographer": "Charlie Foster"
+  },
+  {
+    "name": "Violet sea horizon",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/135.jpg",
+    "alt": "Violet sea horizon",
+    "photographer": "Yuriy Khimanin"
+  },
+  {
+    "name": "Rocky canyon",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/136.jpg",
+    "alt": "Rocky canyon",
+    "photographer": "Marcin Czerwinski"
+  },
+  {
+    "name": "Bare tree",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/140.jpg",
+    "alt": "Bare tree",
+    "photographer": "Kundan Ramisetti"
+  },
+  {
+    "name": "Quiet dunes",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/141.jpg",
+    "alt": "Quiet dunes",
+    "photographer": "Greg Shield"
+  },
+  {
+    "name": "Palace approach",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/142.jpg",
+    "alt": "Palace approach",
+    "photographer": "Vadim Sherbakov"
+  },
+  {
+    "name": "Plants on a wall",
+    "category": "moments",
+    "src": "../stream-implement-3d/assets/photos/143.jpg",
+    "alt": "Plants on a wall",
+    "photographer": "Steve Richey"
+  },
+  {
+    "name": "Monochrome pier",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/144.jpg",
+    "alt": "Monochrome pier",
+    "photographer": "Mouly Kumar"
+  },
+  {
+    "name": "Blue ocean waves",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/147.jpg",
+    "alt": "Blue ocean waves",
+    "photographer": "Kundan Ramisetti"
+  },
+  {
+    "name": "Distant lights at night",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/149.jpg",
+    "alt": "Distant lights at night",
+    "photographer": "Guillaume"
+  },
+  {
+    "name": "Sunlit interior",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/153.jpg",
+    "alt": "Sunlit interior",
+    "photographer": "Charlie Foster"
+  },
+  {
+    "name": "Beach in haze",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/154.jpg",
+    "alt": "Beach in haze",
+    "photographer": "Christopher Sardegna"
+  },
+  {
+    "name": "Coastal railway",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/155.jpg",
+    "alt": "Coastal railway",
+    "photographer": "Christopher Sardegna"
+  },
+  {
+    "name": "Droplet on a leaf",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/159.jpg",
+    "alt": "Droplet on a leaf",
+    "photographer": "Shyamanta Baruah"
+  },
+  {
+    "name": "Aerial coast",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/162.jpg",
+    "alt": "Aerial coast",
+    "photographer": "Dillon McIntosh"
+  },
+  {
+    "name": "Colorful canal buildings",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/164.jpg",
+    "alt": "Colorful canal buildings",
+    "photographer": "Linh Nguyen"
+  },
+  {
+    "name": "Rocky valley",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/166.jpg",
+    "alt": "Rocky valley",
+    "photographer": "Romain Briaux"
+  },
+  {
+    "name": "Autumn leaves",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/167.jpg",
+    "alt": "Autumn leaves",
+    "photographer": "petradr"
+  },
+  {
+    "name": "Trees on rolling hills",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/170.jpg",
+    "alt": "Trees on rolling hills",
+    "photographer": "Noel Lopez"
+  },
+  {
+    "name": "City lights through rain",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/171.jpg",
+    "alt": "City lights through rain",
+    "photographer": "Riley Briggs"
+  },
+  {
+    "name": "Misty jetty",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/172.jpg",
+    "alt": "Misty jetty",
+    "photographer": "Aleksi Tappura"
+  },
+  {
+    "name": "Rain on a city window",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/178.jpg",
+    "alt": "Rain on a city window",
+    "photographer": "Thanun Buranapong"
+  },
+  {
+    "name": "Surf against rocks",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/179.jpg",
+    "alt": "Surf against rocks",
+    "photographer": "Angelina Odemchuk"
+  },
+  {
+    "name": "Desert at dusk",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/184.jpg",
+    "alt": "Desert at dusk",
+    "photographer": "Tim de Groot"
+  },
+  {
+    "name": "Forest in mist",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/186.jpg",
+    "alt": "Forest in mist",
+    "photographer": "Simon Pape"
+  },
+  {
+    "name": "Hillside rooftops",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/188.jpg",
+    "alt": "Hillside rooftops",
+    "photographer": "Wojtek Witkowski"
+  },
+  {
+    "name": "Forest path",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/190.jpg",
+    "alt": "Forest path",
+    "photographer": "James Forbes"
+  },
+  {
+    "name": "Winding mountain road",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/191.jpg",
+    "alt": "Winding mountain road",
+    "photographer": "Alex Talmon"
+  },
+  {
+    "name": "Windowed interior",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/192.jpg",
+    "alt": "Windowed interior",
+    "photographer": "Adam Przewoski"
+  },
+  {
+    "name": "Night street lights",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/195.jpg",
+    "alt": "Night street lights",
+    "photographer": "Matthew Skinner"
+  },
+  {
+    "name": "Pale desert dunes",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/196.jpg",
+    "alt": "Pale desert dunes",
+    "photographer": "Dyaa Eldin Moustafa"
+  },
+  {
+    "name": "Pink blossoms",
+    "category": "daily",
+    "src": "../stream-implement-3d/assets/photos/106.jpg",
+    "alt": "Pink blossoms",
+    "photographer": "Arvee Marie"
+  }
+]

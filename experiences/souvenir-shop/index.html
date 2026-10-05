@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#344936" />
+    <title>Souvenir Shop</title>
+    <meta
+      name="description"
+      content="Explore a shop of paper sculptures, ceramics, and personal travel souvenirs."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%238b4f2e'/%3E%3Cpath d='M16 24h32v25H16zM12 18h40v9H12zM32 18v31' fill='none' stroke='%23fff8e9' stroke-width='3'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./style.css?v=quiet-shop" />
+  </head>
+  <body>
+    <main id="game" aria-label="An explorable 3D souvenir shop">
+      <canvas
+        id="world"
+        tabindex="0"
+        aria-label="Drag to look around, use WASD to move, and click objects to inspect them"
+      ></canvas>
+      <div id="travel-veil" aria-hidden="true"></div>
+      <div id="loading" class="loading">
+
+        <p id="load-status"></p>
+        <div class="load-track"><i id="load-bar"></i></div>
+      </div>
+      <div hidden>
+        <button id="collection-btn" tabindex="-1"></button><span id="collection-count"></span>
+        <button id="reference-btn" tabindex="-1"></button><button id="help-btn" tabindex="-1"></button>
+        <button id="fullscreen-btn" tabindex="-1"></button>
+        <span id="place-title"></span><span id="place-copy"></span>
+      </div>
+
+      <div id="target" class="target" hidden>
+        <span id="target-name"></span
+        ><small id="target-action">Pick up · E</small>
+      </div>
+      <div id="crosshair" aria-hidden="true"></div>
+      <div class="hud bottom">
+
+        <div class="controls-hint" aria-label="WASD movement controls">
+          <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+        </div>
+
+      </div>
+      <div id="touch-controls" class="touch-controls" aria-label="Movement controls">
+        <div id="joystick" aria-label="Drag the joystick to move"><i id="stick"></i></div>
+        <button id="touch-pick" aria-label="Pick up the object in front of you">E</button>
+      </div>
+      <div id="toast" role="status" aria-live="polite"></div>
+    </main>
+    <dialog id="inspector" aria-labelledby="object-title">
+      <canvas id="object-view" aria-label="Drag to rotate the souvenir; scroll to zoom"></canvas>
+      <div class="inspect-top">
+        <span class="eyebrow">A CLOSER LOOK</span
+        ><button id="close-inspect" class="glass-button">
+          ← Put back <kbd>Esc</kbd>
+        </button>
+      </div>
+      <aside class="object-info">
+        <span id="object-category" class="eyebrow"></span>
+        <h2 id="object-title"></h2>
+        <span id="object-origin" class="origin-badge"></span>
+        <p id="object-description"></p>
+        <div class="detail-rule"></div>
+        <dl>
+          <div>
+            <dt>Location</dt>
+            <dd id="object-zone"></dd>
+          </div>
+          <div>
+            <dt>Material</dt>
+            <dd id="object-material"></dd>
+          </div>
+        </dl>
+        <figure class="source-preview">
+          <div id="object-source"></div>
+          <figcaption>From this photograph</figcaption>
+        </figure>
+        <p class="detail-note" id="object-detail-note">
+          The front uses the original photograph; the back and thickness are approximations.
+        </p>
+      </aside>
+      <div class="inspect-bottom">
+        <span>Drag or use arrows to rotate · Scroll to zoom</span>
+        <div>
+          <button id="zoom-out" class="icon-button" aria-label="Zoom out">−</button
+          ><button id="inspect-bottom-view" class="glass-button">View bottom</button
+          ><button id="reset-object" class="glass-button">Reset view</button
+          ><button id="zoom-in" class="icon-button" aria-label="Zoom in">
+            ＋
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <dialog id="help" class="small-dialog" aria-labelledby="help-title">
+      <button class="dialog-close" data-close="help" aria-label="Close">×</button
+      ><span class="eyebrow">WELCOME INSIDE</span>
+      <h2 id="help-title">Take your time. Look around.</h2>
+      <div class="help-row">
+        <strong>Move</strong><span>WASD or arrow keys; use the joystick on mobile</span>
+      </div>
+      <div class="help-row">
+        <strong>Look around</strong><span>Drag to look around; Q / R to look up and down</span>
+      </div>
+      <div class="help-row">
+        <strong>Pick up</strong><span>Click an object, or aim at it and press E</span>
+      </div>
+      <div class="help-row">
+        <strong>Inspect</strong><span>Drag to rotate, scroll to zoom, and press Esc to put back</span>
+      </div>
+      <p class="help-note">
+        按Reference重建的彩色杂货店：木质陈列、满墙贺卡和空中的纸雕花园。23
+        款个人Souvenirs也藏在店里，可以从「Travel collection」直接Pick up。照片外的空间按同一风格延伸。
+      </p>
+      <button data-close="help" class="primary-button">Keep exploring</button>
+    </dialog>
+    <dialog
+      id="reference"
+      class="reference-dialog"
+      aria-labelledby="reference-title"
+    >
+      <div class="reference-head">
+        <div>
+          <span class="eyebrow">THE ORIGINAL ROOM</span>
+          <h2 id="reference-title">Where this shop began</h2>
+        </div>
+        <button
+          class="icon-button"
+          data-close="reference"
+          aria-label="Close reference photo"
+        >
+          ×
+        </button>
+      </div>
+      <img
+        id="reference-image"
+        src="./assets/reference/new-shop.jpg"
+        alt="Reference shop with hanging paper sculptures, wooden tables, and dark walls"
+      />
+      <p>The original shop reference</p>
+    </dialog>
+    <dialog
+      id="collection"
+      class="collection-dialog"
+      aria-labelledby="collection-title"
+    >
+      <div class="collection-head">
+        <div>
+          <span class="eyebrow">FIELD NOTES / PERSONAL COLLECTION</span>
+          <h2 id="collection-title">Bring the journey home</h2>
+          <p>A photo book and twenty-two little things from your travels.</p>
+        </div>
+        <button
+          class="icon-button"
+          data-close="collection"
+          aria-label="Close collection"
+        >
+          ×
+        </button>
+      </div>
+      <div id="collection-grid" class="collection-grid"></div>
+    </dialog>
+    <dialog id="book-reader" aria-label="Tibet and Yunnan · Photo book reader">
+      <header class="reader-toolbar">
+        <button id="close-reader" class="glass-button" type="button">
+          ← Back to the shop</button
+        ><span>Esc to return</span>
+      </header>
+      <div class="reader-content">
+        <iframe id="book-frame" title="Tibet and Yunnan · 42-page photo book"></iframe>
+        <div id="reader-loading" class="reader-loading" role="status">
+          Opening the photo book…
+        </div>
+      </div>
+    </dialog>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
