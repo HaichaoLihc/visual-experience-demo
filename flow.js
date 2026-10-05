@@ -68,7 +68,7 @@ function arrange() {
   stage.setAttribute('aria-label', `${work.title}. Swipe or scroll to browse experiences`);
   document.querySelector('.flow-number').textContent = String(index + 1).padStart(2, '0');
   document.querySelector('.flow-title').textContent = work.title;
-  document.querySelector('.use').dataset.experience = work.id;
+  window.sourceCopy.setExperience(work.id);
   dots.forEach((dot, i) => {
     dot.setAttribute('aria-current', i === index ? 'true' : 'false');
   });
@@ -168,7 +168,7 @@ feed.addEventListener('wheel', event => {
   }
 }, { passive: false });
 document.addEventListener('keydown', event => {
-  if (event.altKey || event.metaKey || event.ctrlKey || event.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (event.altKey || event.metaKey || event.ctrlKey || event.target.closest('input, textarea, select, [contenteditable], dialog')) return;
   if (['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) {
     event.preventDefault();
     navigate(['ArrowRight', 'ArrowDown'].includes(event.key) ? 1 : -1);

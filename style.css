@@ -35,7 +35,7 @@ html:has(.profile-page),html:has(.gallery-route){overflow-y:auto}
 #experience{position:relative;width:100%;height:100%;overflow:hidden}
 .experience-card{position:absolute;inset:0;overflow:hidden;border-radius:var(--radius);background:var(--paper)}
 .experience-app{position:absolute;inset:0;display:block;width:100%;height:100%;border:0}
-.use{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:12px;min-width:82px;height:34px;padding:0 18px;border:1px solid var(--line);border-radius:10px;background:#fafbf7;font-size:12px;font-weight:500}
+.use{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;min-width:80px;height:34px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:#fafbf7;font-size:12px;font-weight:500}
 .use:hover{background:#fff}
 /* The feed moves entire embedded works; its chrome stays outside their viewport. */
 .flow-page{height:calc(100dvh - 72px);display:flex;flex-direction:column;padding:4px 20px 0}
@@ -55,10 +55,27 @@ html:has(.profile-page),html:has(.gallery-route){overflow-y:auto}
 .flow-actions{display:flex;align-items:center;justify-self:end;gap:12px}
 .feed-prev,.feed-next{font-size:12px;color:#7e8577;height:34px;padding:0 10px;border-radius:10px}
 .feed-prev:hover,.feed-next:hover{color:var(--ink);background:#e9ece4}
-.flow-actions .use{background:var(--ink);color:#fff;border-color:var(--ink);min-width:82px}
+.flow-actions .use{background:var(--ink);color:#fff;border-color:var(--ink);min-width:80px}
 .flow-actions .use:hover{background:#434a3e}
 .flow-actions .use svg{width:12px;height:12px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.use-dialog{width:min(380px,calc(100vw - 32px));padding:28px;border:1px solid var(--line);border-radius:22px;background:var(--paper);color:var(--ink);box-shadow:0 24px 80px #18221925}
+.use-dialog::backdrop{background:#18221940}
+.use-dialog h2{margin:0 26px 0 0;font-size:20px;font-weight:500;letter-spacing:-.6px}
+.use-dialog p{margin:12px 0 24px;font-size:13px;color:#7e8577;line-height:1.6}
+.use-dialog-close{position:absolute;top:18px;right:18px;width:28px;height:28px;border-radius:50%;color:#8a8f85}
+.use-dialog-close:hover{background:#e9ece4;color:var(--ink)}
+.use-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.use-dialog-actions button,.use-dialog-actions a{display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:11px;font-size:12px;font-weight:500}
+.prompt-copy{background:var(--ink);color:#fff}
+.prompt-copy:hover{background:#434a3e}
+.source-link{border:1px solid var(--line);background:#fafbf7}
+.source-link:hover{background:#fff}
+.use-dialog-actions svg{width:13px;height:13px}
+.copy-manual{margin-top:18px}
+.copy-manual[hidden]{display:none}
+.copy-manual label{display:block;margin-bottom:8px;font-size:12px;color:#7e8577}
+.copy-manual input{width:100%;min-width:0;padding:12px;font:12px Arial,sans-serif;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--ink)}
 @media(max-width:900px){.gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){
  :root{--radius:18px}

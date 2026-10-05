@@ -5,7 +5,7 @@ if (!experience) {
   location.replace('./');
 } else {
   document.title = experience.title;
-  document.querySelector('.use').dataset.experience = experience.id;
+  window.sourceCopy.setExperience(experience.id);
   const iframe = document.createElement('iframe');
   iframe.className = 'experience-app';
   iframe.title = experience.title;

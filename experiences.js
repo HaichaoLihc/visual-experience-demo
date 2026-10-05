@@ -10,4 +10,5 @@ const experienceCatalog = [
   ...experience,
   url: `experiences/${experience.id}/`,
   poster: experience.poster || `previews/${experience.id}.jpg`,
+  sourceUrl: `https://github.com/HaichaoLihc/visual-experience-demo/tree/main/experiences/${experience.id}`,
 }));
