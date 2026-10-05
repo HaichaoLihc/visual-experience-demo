@@ -6,12 +6,12 @@ useDialog.setAttribute('aria-describedby', 'use-dialog-description');
 useDialog.innerHTML = `
   <button class="use-dialog-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
   <h2 id="use-dialog-title">Use this experience</h2>
-  <p id="use-dialog-description">Copy the project link and give it to your agent to create your own version.</p>
+  <p id="use-dialog-description">Give this prompt to your agent to recreate this experience with your own photos.</p>
   <div class="use-dialog-actions">
     <button class="prompt-copy" type="button" autofocus><span>Copy Prompt</span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg></button>
     <a class="source-link" target="_blank" rel="noopener noreferrer">View Source<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
   </div>
-  <div class="copy-manual" hidden><label for="source-url">Select and copy this link into your agent.</label><input id="source-url" type="url" readonly></div>
+  <div class="copy-manual" hidden><label for="source-prompt">Select and copy this prompt into your agent.</label><textarea id="source-prompt" rows="7" readonly></textarea></div>
   <span class="sr-only" role="status"></span>
 `;
 document.body.append(useDialog);
@@ -21,6 +21,14 @@ const copyStatus = useDialog.querySelector('[role="status"]');
 const manualCopy = useDialog.querySelector('.copy-manual');
 let copyFeedbackTimer;
 let copyAttempt = 0;
+
+function createPhotoPrompt(work) {
+  return `Use the following project as a reference to recreate "${work.title}" with my own photos.
+
+Reference source: ${work.sourceUrl}
+
+Keep the same visual style, layout, animations, and interactions. Read the project's setup instructions and include any required shared assets. Replace the demo photos with the photos I provide. If I haven't provided photos yet, ask me for them or their folder location. Build a working version, run it locally, and tell me how to open it.`;
+}
 
 function resetSourceFeedback() {
   clearTimeout(copyFeedbackTimer);
@@ -46,7 +54,7 @@ sourceButton.addEventListener('click', () => {
   if (!work?.sourceUrl) return;
   resetSourceFeedback();
   useDialog.querySelector('.source-link').href = work.sourceUrl;
-  useDialog.querySelector('input').value = work.sourceUrl;
+  useDialog.querySelector('textarea').value = createPhotoPrompt(work);
   useDialog.showModal();
 });
 
@@ -70,15 +78,15 @@ promptCopy.addEventListener('click', async () => {
   resetSourceFeedback();
   try {
     // Call directly from the click to retain mobile browser user activation.
-    await navigator.clipboard.writeText(work.sourceUrl);
+    await navigator.clipboard.writeText(createPhotoPrompt(work));
     if (attempt !== copyAttempt || !useDialog.open) return;
     copyLabel.textContent = 'Copied';
-    copyStatus.textContent = `${work.title} source link copied. Paste it into your agent.`;
+    copyStatus.textContent = `${work.title} prompt copied. Paste it into your agent.`;
     copyFeedbackTimer = setTimeout(resetSourceFeedback, 1800);
   } catch {
     if (attempt !== copyAttempt || !useDialog.open) return;
     manualCopy.hidden = false;
-    const input = manualCopy.querySelector('input');
+    const input = manualCopy.querySelector('textarea');
     input.focus();
     input.select();
   }
