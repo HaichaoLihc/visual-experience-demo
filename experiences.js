@@ -1,7 +1,7 @@
 // A shared catalog for Explore, Flow, and the profile's demo collection.
 const experienceCatalog = [
   { id: 'stream-implement-3d', title: 'Undertow' },
-  { id: 'souvenir-shop', title: 'Souvenir Shop' },
+  { id: 'souvenir-shop', title: 'Souvenir Shop', poster: 'previews/souvenir-shop.jpg?v=clean-cover' },
   { id: 'chongqing-book', title: 'Chongqing · Between Levels' },
   { id: 'card-gallery', title: 'Card Gallery' },
   { id: 'image-atlas', title: 'Image Atlas' },
@@ -9,5 +9,5 @@ const experienceCatalog = [
 ].map(experience => ({
   ...experience,
   url: `experiences/${experience.id}/`,
-  poster: `previews/${experience.id}.jpg`,
+  poster: experience.poster || `previews/${experience.id}.jpg`,
 }));
