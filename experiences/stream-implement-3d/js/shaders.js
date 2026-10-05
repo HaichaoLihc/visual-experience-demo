@@ -1,10 +1,11 @@
-import { LAYER } from './photos.js';
+import { LAYER } from './photos.js?v=smooth';
 export const IDLE = 3;
 
 const COMMON = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2DArray;
 uniform highp sampler2D uFibS, uFibD;
 uniform float uCW, uCH, uYB, uTime, uMotion;
+uniform float uK;         // pixels of the buffer drawn into per reference pixel (the world can be drawn smaller)
 uniform vec4 uPluck;      // line, age, amplitude, -
 uniform vec4 uHover;      // line, amount, -, -
 ivec2 at(int i){ return ivec2(i & 1023, i >> 10); }
@@ -42,7 +43,7 @@ uniform highp sampler2D uStory;
 uniform vec3 uCam; uniform float uF, uAspect, uHpx, uMinPx, uMirror, uSpacing;
 uniform vec2 uSelect;                    // line, amount
 uniform float uIdleL[${IDLE}], uIdleA[${IDLE}];
-out float vU, vY, vX0, vSeed, vFlare, vSide, vHalfPx, vQuadPx, vNorm, vCl, vCl2, vSpacePx, vPpu, vXw;
+out float vU, vY, vX0, vSeed, vFlare, vSide, vHalfPx, vQuadPx, vNorm, vCl, vCl2, vSpacePx, vPpu, vXw, vGC, vGS;
 flat out int vId; flat out float vN, vPhase, vHov, vSel, vFlowT; flat out vec3 vCol;
 void main(){
   int i=gl_InstanceID;
@@ -61,7 +62,7 @@ void main(){
   float y=p.y;
   if(uMirror>.5) p.y=-p.y;
   float depth=uCam.z-p.z;
-  float ppu=uF*uHpx*.5/max(depth,1e-4);
+  float ppu=uF*uHpx*.5/max(depth,1e-4);              // reference px per unit
   float spacing=uSpacing*ppu;                         // px between neighbouring threads
 
   // How much this thread is being looked at: pointed to, glimmering by itself, or chosen.
@@ -73,15 +74,19 @@ void main(){
   // Threads widen with zoom until each is exactly as wide as its photographs.
   float frac=mix(.14,.8,ss(2.,24.,spacing));
   float halfPx=max(uMinPx*.5,frac*spacing*.5)+hov*.75*(1.-ss(3.,12.,spacing));
-  float quadPx=halfPx+1.;
-  float off=aV.y*quadPx/ppu;
+  // Drawn into a smaller buffer, a thread is still at least uMinPx of its pixels wide and is dimmed so
+  // that its light adds up the same: vGC for the light filling its strip, vGS for what its coverage
+  // cuts out (both exactly 1 at full size).
+  float halfK=max(uMinPx*.5,halfPx*uK), quadPx=halfK+1.;
+  float off=aV.y*quadPx/(ppu*uK);
+  vGC=(halfPx+.5)*uK/(halfK+.5); vGS=halfPx*uK/halfK;
   p.x+=off;
   gl_Position=vec4((p.x-uCam.x)*uF/uAspect,(p.y-uCam.y)*uF,0.,depth);
-  vNorm=clamp(spacing,.07,1.)*(1.+.7*ss(1.5,12.,spacing))*ss(.0,.02,depth/max(uCam.z,1e-4));
+  vNorm=clamp(spacing,.07,1.)*(1.+.7*ss(1.5,12.,spacing))*ss(.0,.02,depth/max(uCam.z,1e-4))*vGC;
   // Light clouds drifting through the curtain, evaluated per vertex and interpolated.
   vCl=fbm(vec2(s.x*.19+uTime*.012, y*.13-uTime*.028));
   vCl2=fbm(vec2(s.x*.85-uTime*.02, y*.42+uTime*.035)+3.7);
-  vU=u; vY=y; vX0=s.x; vSeed=s.y; vFlare=flare; vSide=aV.y; vHalfPx=halfPx; vQuadPx=quadPx;
+  vU=u; vY=y; vX0=s.x; vSeed=s.y; vFlare=flare; vSide=aV.y; vHalfPx=halfK; vQuadPx=quadPx;
   vSpacePx=spacing; vPpu=ppu; vXw=off; vId=i; vN=st.x; vCol=st.yzw; vPhase=dy.z; vFlowT=dy.w;
 }`;
 
@@ -90,7 +95,7 @@ uniform sampler2DArray uArr;
 uniform highp sampler2D uStory, uLayers;
 uniform float uGain, uMirror, uIntro, uW, uS, uDim;
 uniform vec2 uSelect;
-in float vU, vY, vX0, vSeed, vFlare, vSide, vHalfPx, vQuadPx, vNorm, vCl, vCl2, vSpacePx, vPpu, vXw;
+in float vU, vY, vX0, vSeed, vFlare, vSide, vHalfPx, vQuadPx, vNorm, vCl, vCl2, vSpacePx, vPpu, vXw, vGC, vGS;
 flat in int vId; flat in float vN, vPhase, vHov, vSel, vFlowT; flat in vec3 vCol;
 out vec4 o;
 void main(){
@@ -135,18 +140,19 @@ void main(){
     vec3 st=vCol*(.5+.35*cl);
     float inside=0., core=1.;
     if(detail>.001){
-      float lod=log2(max(1.,${LAYER}./(min(uW,h)*vPpu)));
+      float lod=log2(max(1.,${LAYER}./(min(uW,h)*vPpu*uK)));
       vec3 img=textureLod(uArr,vec3(clamp(up,0.,1.),clamp(vp,0.,1.),layer),lod).rgb;
       float e=1./max(h*vPpu,1.);
       inside=ss(0.,e,vp)*ss(1.,1.-e,vp)*ss(uYB,uYB+3.*uS,y)*ss(uCH,uCH-2.*uS,y);
       // Between moments only the thread itself remains, a hairline in its story's colour.
-      core=clamp(1.2-abs(vXw)*vPpu,0.,1.);
-      vec3 thread=vCol*(.3+.25*cl+.5*vHov)*core;
+      float d=abs(vXw)*vPpu;
+      core=clamp(1.2-d*vGC,0.,1.);
+      vec3 thread=vCol*(.3+.25*cl+.5*vHov)*clamp(1.2-d*vGS,0.,1.);
       st=mix(st,mix(thread,img,inside),detail);
     }
     st*=1.+vHov*.25*(1.-detail);
     // The curtain's own light keeps running along the thread between the pictures.
-    c=mix(c,st*cov,reveal)+c*core*(1.-inside)*reveal*.75;
+    c=mix(c,st*cov*vGS,reveal)+c*core*(1.-inside)*reveal*.75;
   }
 
   float front=uIntro*8.5-1.;

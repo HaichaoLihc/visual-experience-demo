@@ -22,7 +22,7 @@ export async function loadCatalog(url = 'photos.json') {
       ...p,
       aspect,
       full: `assets/photos/${file}`,
-      thumb: `assets/thumbs/${file}`,
+      thumb: `assets/thumbs/${file.replace(/\.\w+$/, '.webp')}`, // 768 px WebP copies of the photos
     };
   });
 
@@ -39,6 +39,7 @@ export async function loadCatalog(url = 'photos.json') {
 }
 
 // A few representative colours per photo, used to dye the flower carpet.
+// photos.json carries them precomputed ("palette"); this measures any photo without one.
 export function extractPalette(img, count = 6) {
   const size = 36;
   const c = document.createElement('canvas');

@@ -3,6 +3,7 @@
     "name": "Pink blossoms",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/106.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/106.webp",
     "alt": "Pink blossoms",
     "photographer": "Arvee Marie"
   },
@@ -10,6 +11,7 @@
     "name": "Muted grain field",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/107.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/107.webp",
     "alt": "Muted grain field",
     "photographer": "Lukas Schweizer"
   },
@@ -17,6 +19,7 @@
     "name": "Palms in haze",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/108.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/108.webp",
     "alt": "Palms in haze",
     "photographer": "Florian Klauer"
   },
@@ -24,6 +27,7 @@
     "name": "Sunlight through woodland",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/109.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/109.webp",
     "alt": "Sunlight through woodland",
     "photographer": "Zwaddi"
   },
@@ -31,6 +35,7 @@
     "name": "Golden grasses",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/112.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/112.webp",
     "alt": "Golden grasses",
     "photographer": "Zugr"
   },
@@ -38,6 +43,7 @@
     "name": "Mountains through fog",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/114.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/114.webp",
     "alt": "Mountains through fog",
     "photographer": "Brian Gonzalez"
   },
@@ -45,6 +51,7 @@
     "name": "Wet stone detail",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/115.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/115.webp",
     "alt": "Wet stone detail",
     "photographer": "Christian Hebell"
   },
@@ -52,6 +59,7 @@
     "name": "Field path",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/116.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/116.webp",
     "alt": "Field path",
     "photographer": "Anton Sulsky"
   },
@@ -59,6 +67,7 @@
     "name": "Fence at night",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/120.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/120.webp",
     "alt": "Fence at night",
     "photographer": "Guillaume"
   },
@@ -66,6 +75,7 @@
     "name": "Monochrome mountain valley",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/121.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/121.webp",
     "alt": "Monochrome mountain valley",
     "photographer": "Radio Pink"
   },
@@ -73,6 +83,7 @@
     "name": "London river architecture",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/122.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/122.webp",
     "alt": "London river architecture",
     "photographer": "Vadim Sherbakov"
   },
@@ -80,6 +91,7 @@
     "name": "Boat on turquoise water",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/124.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/124.webp",
     "alt": "Boat on turquoise water",
     "photographer": "Anton Sulsky"
   },
@@ -87,6 +99,7 @@
     "name": "Lakeside grasses",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/125.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/125.webp",
     "alt": "Lakeside grasses",
     "photographer": "Rick Waalders"
   },
@@ -94,6 +107,7 @@
     "name": "Water surface",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/126.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/126.webp",
     "alt": "Water surface",
     "photographer": "Zugr"
   },
@@ -101,6 +115,7 @@
     "name": "Mountain lake",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/128.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/128.webp",
     "alt": "Mountain lake",
     "photographer": "Matteo Minelli"
   },
@@ -108,6 +123,7 @@
     "name": "Waterfront in mist",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/131.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/131.webp",
     "alt": "Waterfront in mist",
     "photographer": "Charlie Foster"
   },
@@ -115,6 +131,7 @@
     "name": "Sunset shoreline",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/132.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/132.webp",
     "alt": "Sunset shoreline",
     "photographer": "Peter Besser"
   },
@@ -122,6 +139,7 @@
     "name": "Bridge structure",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/134.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/134.webp",
     "alt": "Bridge structure",
     "photographer": "Charlie Foster"
   },
@@ -129,6 +147,7 @@
     "name": "Violet sea horizon",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/135.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/135.webp",
     "alt": "Violet sea horizon",
     "photographer": "Yuriy Khimanin"
   },
@@ -136,6 +155,7 @@
     "name": "Rocky canyon",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/136.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/136.webp",
     "alt": "Rocky canyon",
     "photographer": "Marcin Czerwinski"
   },
@@ -143,6 +163,7 @@
     "name": "Bare tree",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/140.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/140.webp",
     "alt": "Bare tree",
     "photographer": "Kundan Ramisetti"
   },
@@ -150,6 +171,7 @@
     "name": "Quiet dunes",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/141.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/141.webp",
     "alt": "Quiet dunes",
     "photographer": "Greg Shield"
   },
@@ -157,6 +179,7 @@
     "name": "Palace approach",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/142.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/142.webp",
     "alt": "Palace approach",
     "photographer": "Vadim Sherbakov"
   },
@@ -164,6 +187,7 @@
     "name": "Plants on a wall",
     "category": "moments",
     "src": "../stream-implement-3d/assets/photos/143.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/143.webp",
     "alt": "Plants on a wall",
     "photographer": "Steve Richey"
   },
@@ -171,6 +195,7 @@
     "name": "Monochrome pier",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/144.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/144.webp",
     "alt": "Monochrome pier",
     "photographer": "Mouly Kumar"
   },
@@ -178,6 +203,7 @@
     "name": "Blue ocean waves",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/147.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/147.webp",
     "alt": "Blue ocean waves",
     "photographer": "Kundan Ramisetti"
   },
@@ -185,6 +211,7 @@
     "name": "Distant lights at night",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/149.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/149.webp",
     "alt": "Distant lights at night",
     "photographer": "Guillaume"
   },
@@ -192,6 +219,7 @@
     "name": "Sunlit interior",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/153.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/153.webp",
     "alt": "Sunlit interior",
     "photographer": "Charlie Foster"
   },
@@ -199,6 +227,7 @@
     "name": "Beach in haze",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/154.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/154.webp",
     "alt": "Beach in haze",
     "photographer": "Christopher Sardegna"
   },
@@ -206,6 +235,7 @@
     "name": "Coastal railway",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/155.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/155.webp",
     "alt": "Coastal railway",
     "photographer": "Christopher Sardegna"
   },
@@ -213,6 +243,7 @@
     "name": "Droplet on a leaf",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/159.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/159.webp",
     "alt": "Droplet on a leaf",
     "photographer": "Shyamanta Baruah"
   },
@@ -220,6 +251,7 @@
     "name": "Aerial coast",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/162.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/162.webp",
     "alt": "Aerial coast",
     "photographer": "Dillon McIntosh"
   },
@@ -227,6 +259,7 @@
     "name": "Colorful canal buildings",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/164.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/164.webp",
     "alt": "Colorful canal buildings",
     "photographer": "Linh Nguyen"
   },
@@ -234,6 +267,7 @@
     "name": "Rocky valley",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/166.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/166.webp",
     "alt": "Rocky valley",
     "photographer": "Romain Briaux"
   },
@@ -241,6 +275,7 @@
     "name": "Autumn leaves",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/167.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/167.webp",
     "alt": "Autumn leaves",
     "photographer": "petradr"
   },
@@ -248,6 +283,7 @@
     "name": "Trees on rolling hills",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/170.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/170.webp",
     "alt": "Trees on rolling hills",
     "photographer": "Noel Lopez"
   },
@@ -255,6 +291,7 @@
     "name": "City lights through rain",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/171.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/171.webp",
     "alt": "City lights through rain",
     "photographer": "Riley Briggs"
   },
@@ -262,6 +299,7 @@
     "name": "Misty jetty",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/172.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/172.webp",
     "alt": "Misty jetty",
     "photographer": "Aleksi Tappura"
   },
@@ -269,6 +307,7 @@
     "name": "Rain on a city window",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/178.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/178.webp",
     "alt": "Rain on a city window",
     "photographer": "Thanun Buranapong"
   },
@@ -276,6 +315,7 @@
     "name": "Surf against rocks",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/179.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/179.webp",
     "alt": "Surf against rocks",
     "photographer": "Angelina Odemchuk"
   },
@@ -283,6 +323,7 @@
     "name": "Desert at dusk",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/184.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/184.webp",
     "alt": "Desert at dusk",
     "photographer": "Tim de Groot"
   },
@@ -290,6 +331,7 @@
     "name": "Forest in mist",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/186.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/186.webp",
     "alt": "Forest in mist",
     "photographer": "Simon Pape"
   },
@@ -297,6 +339,7 @@
     "name": "Hillside rooftops",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/188.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/188.webp",
     "alt": "Hillside rooftops",
     "photographer": "Wojtek Witkowski"
   },
@@ -304,6 +347,7 @@
     "name": "Forest path",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/190.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/190.webp",
     "alt": "Forest path",
     "photographer": "James Forbes"
   },
@@ -311,6 +355,7 @@
     "name": "Winding mountain road",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/191.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/191.webp",
     "alt": "Winding mountain road",
     "photographer": "Alex Talmon"
   },
@@ -318,6 +363,7 @@
     "name": "Windowed interior",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/192.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/192.webp",
     "alt": "Windowed interior",
     "photographer": "Adam Przewoski"
   },
@@ -325,6 +371,7 @@
     "name": "Night street lights",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/195.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/195.webp",
     "alt": "Night street lights",
     "photographer": "Matthew Skinner"
   },
@@ -332,6 +379,7 @@
     "name": "Pale desert dunes",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/196.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/196.webp",
     "alt": "Pale desert dunes",
     "photographer": "Dyaa Eldin Moustafa"
   },
@@ -339,6 +387,7 @@
     "name": "Pink blossoms",
     "category": "daily",
     "src": "../stream-implement-3d/assets/photos/106.jpg",
+    "thumb": "../stream-implement-3d/assets/thumbs/106.webp",
     "alt": "Pink blossoms",
     "photographer": "Arvee Marie"
   }

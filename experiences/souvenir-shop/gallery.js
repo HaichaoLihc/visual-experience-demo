@@ -188,7 +188,8 @@ CATALOG.banner = {
   sourcePhoto: 1,
   artwork: artUrl(10),
 };
-export function buildShop(textures) {
+// `pause` lets the caller split construction into short main-thread tasks.
+export async function buildShop(textures, pause = async () => {}) {
   const room = new T.Group(),
     objects = [],
     colliders = [],
@@ -712,6 +713,7 @@ export function buildShop(textures) {
         floorMats[Math.abs(row * 7 + col * 3) % 9],
       );
     }
+  await pause();
   for (const x of [-2.91, 2.91]) {
     box(room, 0.12, 3.28, 11.5, x, 1.62, 0, wall);
     box(room, 0.025, 0.12, 11.4, x + (x < 0 ? 0.065 : -0.065), 0.06, 0, dark);
@@ -789,6 +791,7 @@ export function buildShop(textures) {
           ][j % 4],
           0.25,
         );
+    await pause();
   }
   wb(right, 9.86, 0.04, 0.42, 0, 2.4, 0);
   for (let i = 0; i < 27; i++) {
@@ -803,6 +806,7 @@ export function buildShop(textures) {
       right,
       (i * 7 + 22) % TRIP_ART.length,
     );
+    await pause();
   }
   // Pale cabinetry and a lower counter along the card wall.
   for (let i = 0; i < 5; i++) {
@@ -844,6 +848,7 @@ export function buildShop(textures) {
       "flower-dish",
     ][i % 7];
     object(typ, 2.33, 0.72, 4.5 - i * 0.3, 0.67, -Math.PI / 2, room, i % 8);
+    await pause();
   }
   // Left side, deep olive shelving and a rhythm of wood compartments.
   const left = new T.Group();
@@ -882,6 +887,7 @@ export function buildShop(textures) {
         left,
         (i * 13 + row * 29 + 21) % TRIP_ART.length,
       );
+      await pause();
     }
   // Make room among the left-shelf books, with the original cover facing the aisle.
   object(BOOK_TYPE, -2.32, 1.2675, 0.1, 1, 0, left);
@@ -1048,6 +1054,7 @@ export function buildShop(textures) {
         gold,
       );
     }
+    await pause();
   }
   tag(craftStand, 0, 0.704, 0.244, "TWELVE LITTLE MEMORIES", 0.47);
   collision(-1.94, 3.64, 0.51, 1.27);
@@ -1116,6 +1123,7 @@ export function buildShop(textures) {
     if (i === 3 || i === 8) o.rotation.x = -Math.PI / 2;
     if (i === 5) o.rotation.y = 0.15;
   });
+  await pause();
   // An oak peg supports the tote at its handle height.
   cyl(room, 0.022, 0.032, 1.84, -1.66, 0.92, -1.65, wood, 20);
   cyl(room, 0.19, 0.22, 0.032, -1.66, 0.016, -1.65, wood, 32);
@@ -1199,6 +1207,7 @@ export function buildShop(textures) {
           (31 + i * 17 + c * 23 + row * 11) % TRIP_ART.length,
         );
     collision(x, -5.32, 0.65, 0.43);
+    await pause();
   }
   table(-0.87, -4.64, 1.59, 0.76, 0.79);
   for (let i = 0; i < 5; i++)
@@ -1281,6 +1290,7 @@ export function buildShop(textures) {
       o.rotation.z = o.userData.restZ;
       mobiles.push(o);
     }
+    await pause();
   }
   // A lower festoon towards the back, with small round medallions.
   for (let j = 0; j < 12; j++) {

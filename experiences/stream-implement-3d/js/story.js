@@ -8,9 +8,9 @@ import { clamp, smooth, damp, mod } from './math.js';
 const DRIFT = 30; // px/s the stream flows on its own
 
 export class StoryView {
-  constructor({ stories, onShow, onCovered, onHide }) {
+  constructor({ stories, onShow, onCovered, onHide, active = () => true }) {
     this.stories = stories;
-    this.onShow = onShow; this.onCovered = onCovered; this.onHide = onHide;
+    this.onShow = onShow; this.onCovered = onCovered; this.onHide = onHide; this.active = active;
     this.index = -1; this.origin = innerWidth / 2; this.pushed = false; this.timers = [];
 
     const el = this.el = document.getElementById('story');
@@ -34,9 +34,14 @@ export class StoryView {
       e.preventDefault();
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? innerHeight : 1;
       this.target -= e.deltaY * unit;
+      this.wake();
     }, { passive: false });
-    this.flow.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') this.hovering = !!e.target.closest('.item'); });
-    this.flow.addEventListener('pointerleave', () => { this.hovering = false; });
+    this.flow.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'mouse') return;
+      const over = !!e.target.closest('.item');
+      if (over !== this.hovering) { this.hovering = over; this.wake(); }
+    });
+    this.flow.addEventListener('pointerleave', () => { this.hovering = false; this.wake(); });
     this.strip.addEventListener('click', e => {
       const shot = e.target.closest('.shot');
       if (shot && !this.dragged) this.openLightbox(+shot.dataset.i);
@@ -52,8 +57,8 @@ export class StoryView {
       const k = e.key;
       if (k === 'Escape') { e.preventDefault(); this.lb.hidden ? this.close() : this.closeLightbox(); }
       else if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); this.lb.hidden ? this.step(k === 'ArrowRight' ? 1 : -1) : this.lightboxStep(k === 'ArrowRight' ? 1 : -1); }
-      else if (k === 'ArrowUp' || k === 'ArrowDown') { e.preventDefault(); this.target += k === 'ArrowUp' ? 180 : -180; }
-      else if (k === ' ') { e.preventDefault(); this.paused = !this.paused; }
+      else if (k === 'ArrowUp' || k === 'ArrowDown') { e.preventDefault(); this.target += k === 'ArrowUp' ? 180 : -180; this.wake(); }
+      else if (k === ' ') { e.preventDefault(); this.paused = !this.paused; this.wake(); }
       e.stopImmediatePropagation();
     }, true);
   }
@@ -120,7 +125,7 @@ export class StoryView {
     this.later(() => this.onCovered(), 1000);
     this.back.focus({ preventScroll: true, focusVisible: false });
     this.drift = 0;
-    this.loop();
+    this.wake();
   }
 
   hide() {
@@ -154,6 +159,7 @@ export class StoryView {
       if (n.entry) n.entry.style.transitionDelay = `${base + r * 110 + 520}ms`;
     });
     this.el.classList.add('unfolded');
+    this.wake();
     this.later(() => this.resetDelays(), base + order.length * 110 + 1800);
   }
   resetDelays() {
@@ -241,6 +247,7 @@ export class StoryView {
     const d = mod(want - now + this.cycle / 2, this.cycle) - this.cycle / 2; // shortest way round
     this.target = now + d;
     if (!animate) this.offset = this.target;
+    this.wake();
   }
 
   place() {
@@ -250,23 +257,32 @@ export class StoryView {
       n.y = y;
       // Moments dim into the dark as they near the edges; the thread between them stays straight.
       const d = (y + n.h / 2 - vh / 2) / (vh / 2);
-      n.el.style.transform = `translate3d(-50%, ${y.toFixed(2)}px, 0)`;
-      n.el.style.opacity = (1 - smooth(0.78, 1.18, Math.abs(d))).toFixed(3);
+      const transform = `translate3d(-50%, ${y.toFixed(2)}px, 0)`, opacity = (1 - smooth(0.78, 1.18, Math.abs(d))).toFixed(3);
+      if (transform !== n.transform) n.el.style.transform = n.transform = transform;
+      if (opacity !== n.opacity) n.el.style.opacity = n.opacity = opacity;
     }
   }
 
-  loop() {
-    if (this.raf) return;
+  // The column moves only while something moves it: its own drift, a fling, a drag or a step. Once it
+  // has come to rest (paused, held under the pointer, behind the lightbox) the loop stops until woken.
+  wake() {
+    if (!this.active()) { cancelAnimationFrame(this.raf); this.raf = 0; return; }
+    if (this.raf || !this.isOpen) return;
     let last = performance.now();
     const tick = now => {
-      this.raf = requestAnimationFrame(tick);
-      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      this.raf = 0;
+      if (!this.isOpen || !this.active()) return;
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
       const flowing = this.el.classList.contains('unfolded') && !this.paused && !REDUCED && this.lb.hidden;
       const hold = this.hovering && !this.drag;
-      this.drift = damp(this.drift, flowing && !hold ? DRIFT : 0, hold ? 5 : 1.6, dt);
+      const goal = flowing && !hold ? DRIFT : 0;
+      this.drift = damp(this.drift, goal, hold ? 5 : 1.6, dt);
       if (!this.drag) { this.target += (this.drift + this.vel) * dt; this.vel *= Math.exp(-dt * 3); }
       this.offset = damp(this.offset, this.target, this.drag ? 30 : 9, dt);
+      const resting = !goal && !this.drag && this.drift < 0.05 && Math.abs(this.vel) < 0.5 && Math.abs(this.target - this.offset) < 0.05;
+      if (resting) { this.drift = 0; this.vel = 0; this.offset = this.target; }
       this.place();
+      if (!resting) this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
   }
@@ -277,6 +293,7 @@ export class StoryView {
     if (e.button > 0) return;
     this.drag = { x: e.clientX, y: e.clientY, lastY: e.clientY, lastT: performance.now(), id: e.pointerId };
     this.dragged = false; this.vel = 0;
+    this.wake();
   }
   dragMove(e) {
     const d = this.drag;
@@ -288,6 +305,7 @@ export class StoryView {
     this.target += e.clientY - d.lastY;
     this.vel = damp(this.vel, (e.clientY - d.lastY) / Math.max((now - d.lastT) / 1000, 1e-3), 20, (now - d.lastT) / 1000);
     d.lastY = e.clientY; d.lastT = now;
+    this.wake();
   }
   dragEnd(e, cancel = false) {
     const d = this.drag;
@@ -296,6 +314,7 @@ export class StoryView {
     this.el.classList.remove('dragging');
     const dx = e.clientX - d.x, dy = e.clientY - d.y;
     if (!cancel && this.dragged && Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.5) { this.vel = 0; this.step(dx < 0 ? 1 : -1); }
+    this.wake();
     setTimeout(() => { this.dragged = false; }, 0);
   }
 
@@ -313,7 +332,7 @@ export class StoryView {
   closeLightbox(now = false) {
     if (this.lb.hidden) return;
     this.lb.classList.remove('on');
-    const done = () => { this.lb.hidden = true; };
+    const done = () => { this.lb.hidden = true; this.wake(); };
     now ? done() : setTimeout(done, 400);
   }
 }

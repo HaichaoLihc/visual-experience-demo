@@ -50,12 +50,10 @@ function mergeMeshes(root, meshes) {
     let nextIndex = 0,
       baseVertex = 0;
     for (const part of parts) {
-      const count = part.index
-        ? part.index.count
-        : part.attributes.position.count;
+      const source = part.index?.array,
+        count = source ? source.length : part.attributes.position.count;
       for (let i = 0; i < count; i++)
-        indices[nextIndex++] =
-          baseVertex + (part.index ? part.index.getX(i) : i);
+        indices[nextIndex++] = baseVertex + (source ? source[i] : i);
       baseVertex += part.attributes.position.count;
     }
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
@@ -69,7 +67,7 @@ function mergeMeshes(root, meshes) {
     parts.forEach((geo) => geo.dispose());
   }
 }
-export function optimize(room, items) {
+export async function optimize(room, items, pause = async () => {}) {
   room.updateMatrixWorld(true);
   // Independently merge every souvenir: its identity and transform survive.
   for (const item of items) {
@@ -78,6 +76,7 @@ export function optimize(room, items) {
       if (o.isMesh) meshes.push(o);
     });
     mergeMeshes(item, meshes);
+    await pause();
   }
   const staticMeshes = [];
   room.traverse((mesh) => {

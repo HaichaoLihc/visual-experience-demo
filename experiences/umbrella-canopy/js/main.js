@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { loadCatalog, extractPalette } from './data.js';
-import { CanopyScene } from './scene.js';
+import { loadCatalog, extractPalette } from './data.js?v=quiet-canopy-2';
+import { CanopyScene } from './scene.js?v=quiet-canopy-2';
 
 const $ = (sel) => document.querySelector(sel);
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,11 +19,33 @@ let readyResolve;
 const ready = new Promise((r) => { readyResolve = r; });
 
 // ---------------------------------------------------------------------------
+// The platform feed pauses works that are off screen; the index also hides the
+// scene completely once it has faded in. Standalone, the canopy simply runs.
+// ---------------------------------------------------------------------------
+let hostActive = true;
+let indexCovers = false;
+const isRunning = () => hostActive && !document.hidden && !indexCovers;
+function syncRunning() {
+  document.documentElement.classList.toggle('is-paused', !isRunning());
+  if (scene) scene.setRunning(isRunning());
+}
+addEventListener('message', (event) => {
+  if (event.source !== parent || event.data?.type !== 'platform:visibility') return;
+  hostActive = Boolean(event.data.active);
+  syncRunning();
+});
+document.addEventListener('visibilitychange', syncRunning);
+if (parent !== window) parent.postMessage({ type: 'platform:hello' }, '*');
+
+// Give the page a turn between the heavier start-up steps.
+const nextTask = () => globalThis.scheduler?.yield?.() ?? new Promise((r) => setTimeout(r, 0));
+
+// ---------------------------------------------------------------------------
 async function init() {
   const canvas = $('#scene');
   let catalog;
   try {
-    catalog = await loadCatalog('photos.json');
+    catalog = await loadCatalog('photos.json?v=quiet-canopy-2');
   } catch (err) {
     $('#loader-text').textContent = 'Could not load photos.json. Serve this folder over http (see report).';
     console.error(err);
@@ -32,9 +54,13 @@ async function init() {
   state.photos = catalog.photos;
   state.stories = catalog.stories;
   $('#subtitle').textContent = `${state.photos.length} photographs in ${state.stories.length} stories, hung like crystals`;
+  // start downloading and decoding the photographs straight away
+  const images = state.photos.map((p) => loadImage(p.thumb));
+  images.forEach((img) => img.catch(() => {}));
 
   buildChips();
   buildIndex();
+  await nextTask();
 
   try {
     scene = new CanopyScene(canvas, { reducedMotion });
@@ -45,6 +71,9 @@ async function init() {
     $('#index-close').hidden = true;
     return;
   }
+  await nextTask();
+  scene.buildRoom();
+  await nextTask();
   scene.setPhotos(state.photos, state.stories);
 
   // opening view: a little further back, then drift in once photos are hung
@@ -54,7 +83,6 @@ async function init() {
   scene.camera.position.copy(start);
   scene.controls.target.copy(whole.target);
   scene.camera.lookAt(whole.target);
-  scene.start();
 
   bindPointer(canvas);
   bindUI();
@@ -63,35 +91,68 @@ async function init() {
     hideTooltipIfDragging();
     setTimeout(() => $('#hint').classList.add('is-hidden'), 4000);
   });
+  scene.on('contextrestored', () => {
+    // the uploaded photos were lost with the context; fetch them again (HTTP cache)
+    scene.resetPhotoTextures();
+    scene.setRunning(isRunning());
+    scene.redraw();
+    loadTextures(state.photos.map((p) => loadImage(p.thumb))).then(() => scene.redraw());
+  });
   window.addEventListener('resize', () => {
     applyInset();
   });
+  window.addEventListener('pagehide', () => scene.releaseContext());
+  window.addEventListener('pageshow', (e) => { if (e.persisted) scene.restoreContext(); });
 
-  await loadTextures();
-  scene.recolorCarpet();
-  $('#loader').classList.add('is-done');
+  await nextTask();
+  // shaders compile in parallel while the photos arrive
+  const [, missingPalette] = await Promise.all([scene.compile(), loadTextures(images)]);
+  if (missingPalette) scene.recolorCarpet();
+  scene.settle();
 
   if (!applyHash()) scene.flyTo(scene.wholeView(0.35), 2.4);
+  // draw before the loader goes, so the canvas is never seen empty
+  scene.renderFirst();
+  $('#loader').classList.add('is-done');
+  syncRunning(); // the intro flight waits here until the work is on screen
   readyResolve();
+  if (parent !== window) {
+    let sent = false;
+    const send = () => { if (!sent) { sent = true; parent.postMessage({ type: 'platform:ready' }, '*'); } };
+    requestAnimationFrame(send);
+    setTimeout(send, 100); // rAF may not fire while the frame is hidden
+  }
 }
 
-function loadTextures() {
-  const loader = new THREE.TextureLoader();
+// Fetch and decode a photograph off the main thread (ImageBitmap), or as an <img>
+// where createImageBitmap is missing. Both are uploaded with flipY = false.
+function loadImage(url) {
+  if (typeof createImageBitmap === 'undefined') return new THREE.ImageLoader().loadAsync(url);
+  return fetch(url)
+    .then((res) => { if (!res.ok) throw new Error(`${res.status} ${url}`); return res.blob(); })
+    .then((blob) => createImageBitmap(blob));
+}
+
+// Resolves once every photo is on its card (or after 15 s), with whether any
+// photo had no palette in photos.json and needed one measured here.
+function loadTextures(images) {
   let done = 0;
+  let measured = false;
   const total = state.photos.length;
   const text = $('#loader-text');
   return new Promise((resolve) => {
-    const finish = () => resolve();
+    const finish = () => resolve(measured);
     const timer = setTimeout(finish, 15000);
-    state.photos.forEach((p) => {
-      loader.load(
-        p.thumb,
-        (tex) => {
-          try { p.palette = extractPalette(tex.image); } catch { p.palette = null; }
-          scene.setPhotoTexture(p, tex);
+    state.photos.forEach((p, i) => {
+      images[i].then(
+        // one upload per task, so arrivals never pile up into one long frame
+        (img) => setTimeout(() => {
+          if (!p.palette) {
+            try { p.palette = extractPalette(img); measured = true; } catch { p.palette = null; }
+          }
+          scene.setPhotoTexture(p, img);
           step();
-        },
-        undefined,
+        }),
         () => { console.warn('Missing photo', p.thumb); step(); },
       );
     });
@@ -294,15 +355,25 @@ function openIndex() {
 }
 function closeIndex() {
   $('#index').hidden = true;
+  indexCovers = false;
+  syncRunning();
   if (lastFocus && lastFocus.focus) lastFocus.focus();
 }
+// Once faded in, the index hides the scene behind a still blur: stop drawing it.
+$('#index').addEventListener('animationend', (e) => {
+  if (e.target !== e.currentTarget || e.currentTarget.hidden) return;
+  indexCovers = true;
+  syncRunning();
+});
 
 // ---------------------------------------------------------------------------
 // Pointer: hover tooltip and click-to-open
 // ---------------------------------------------------------------------------
 const pointer = { x: 0, y: 0, inside: false, down: null, dragging: false, type: 'mouse', dirty: false };
+let canvasEl;
 
 function bindPointer(canvas) {
+  canvasEl = canvas;
   canvas.addEventListener('pointermove', (e) => {
     pointer.x = e.clientX; pointer.y = e.clientY; pointer.inside = true; pointer.type = e.pointerType;
     pointer.dirty = true;
@@ -330,15 +401,27 @@ function bindPointer(canvas) {
 }
 
 let hoverCheckFrame = 0;
+const lastPickCam = { pos: new THREE.Vector3(), quat: new THREE.Quaternion(), inset: 0 };
+// Did anything under a resting pointer move since the last pick?
+function sceneMoved() {
+  const cam = scene.camera, inset = scene.inset.right + scene.inset.bottom;
+  const moved = scene.common.uSway.value > 0 // cards drift on their threads
+    || !cam.position.equals(lastPickCam.pos) || !cam.quaternion.equals(lastPickCam.quat) || inset !== lastPickCam.inset;
+  lastPickCam.pos.copy(cam.position);
+  lastPickCam.quat.copy(cam.quaternion);
+  lastPickCam.inset = inset;
+  return moved;
+}
+
 function onFrame() {
   // hover: re-pick when the pointer moved, and every few frames while things drift
   hoverCheckFrame++;
-  if (pointer.inside && pointer.type === 'mouse' && !pointer.dragging && (pointer.dirty || hoverCheckFrame % 6 === 0)) {
+  if (pointer.inside && pointer.type === 'mouse' && !pointer.dragging && (pointer.dirty || (hoverCheckFrame % 6 === 0 && sceneMoved()))) {
     pointer.dirty = false;
     const hit = scene.pick(pointer.x, pointer.y);
     const photo = hit ? hit.photo : null;
     scene.setHovered(photo);
-    $('#scene').classList.toggle('is-pointer', !!photo);
+    canvasEl.classList.toggle('is-pointer', !!photo);
     if (photo && photo !== state.photo) showTooltip(photo, hit.kind);
     else hideTooltip();
   }
@@ -352,22 +435,35 @@ function onFrame() {
 
 let autoRotateAllowed = true;
 
+// The tooltip's text (and so its size) only changes with the photo under the
+// pointer; measure it then, not on every pick.
+const tip = { el: null, photo: null, kind: null, w: 0, h: 0, x: null, y: null };
 function showTooltip(photo, kind) {
-  const tt = $('#tooltip');
-  tt.hidden = false;
-  tt.querySelector('.dot').style.setProperty('--c', photo.story.color);
-  tt.querySelector('.tt-story-name').textContent = photo.story.title;
-  tt.querySelector('.tt-title').textContent = photo.description;
-  tt.querySelector('.tt-meta').textContent = kind === 'umbrella'
-    ? `Its umbrella in the canopy · click to see the photo`
-    : `${photo.photographer} · click to open`;
-  const w = tt.offsetWidth, h = tt.offsetHeight;
+  const tt = tip.el ||= $('#tooltip');
+  if (tt.hidden || photo !== tip.photo || kind !== tip.kind) {
+    tt.hidden = false;
+    tt.querySelector('.dot').style.setProperty('--c', photo.story.color);
+    tt.querySelector('.tt-story-name').textContent = photo.story.title;
+    tt.querySelector('.tt-title').textContent = photo.description;
+    tt.querySelector('.tt-meta').textContent = kind === 'umbrella'
+      ? `Its umbrella in the canopy · click to see the photo`
+      : `${photo.photographer} · click to open`;
+    tip.photo = photo; tip.kind = kind;
+    tip.w = tt.offsetWidth; tip.h = tt.offsetHeight;
+    tip.x = tip.y = null;
+  }
   let x = pointer.x + 16, y = pointer.y + 18;
-  if (x + w > window.innerWidth - 8) x = pointer.x - w - 16;
-  if (y + h > window.innerHeight - 8) y = pointer.y - h - 18;
-  tt.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  if (x + tip.w > window.innerWidth - 8) x = pointer.x - tip.w - 16;
+  if (y + tip.h > window.innerHeight - 8) y = pointer.y - tip.h - 18;
+  x = Math.round(x); y = Math.round(y);
+  if (x === tip.x && y === tip.y) return;
+  tip.x = x; tip.y = y;
+  tt.style.transform = `translate(${x}px, ${y}px)`;
 }
-function hideTooltip() { $('#tooltip').hidden = true; }
+function hideTooltip() {
+  const tt = tip.el ||= $('#tooltip');
+  if (!tt.hidden) tt.hidden = true;
+}
 function hideTooltipIfDragging() { if (pointer.dragging) hideTooltip(); }
 
 // ---------------------------------------------------------------------------

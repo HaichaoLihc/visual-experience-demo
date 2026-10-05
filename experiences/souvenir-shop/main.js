@@ -17,6 +17,17 @@ import { createBookReader } from "./book-reader.js";
 const $ = (id) => document.getElementById(id);
 const canvas = $("world");
 const dialogs = [...document.querySelectorAll("dialog")];
+const veil = $("travel-veil"),
+  readerDialog = $("book-reader");
+// The platform feed pauses works that are off screen.
+let hostActive = true;
+addEventListener("message", (event) => {
+  if (event.source !== parent || event.data?.type !== "platform:visibility")
+    return;
+  hostActive = Boolean(event.data.active);
+  syncRunning();
+});
+if (parent !== window) parent.postMessage({ type: "platform:hello" }, "*");
 const keys = new Set(),
   pointer = new THREE.Vector2(0, 0),
   ray = new THREE.Raycaster();
@@ -54,6 +65,24 @@ let mobiles = [],
   personalObjects = [];
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let pickSignature = "";
+// The loop only runs while the shop is on screen; `clock` advances with it so
+// the hanging paper resumes where it stopped instead of skipping ahead.
+let started = false,
+  frame = 0,
+  clock = 0,
+  renderedView = "",
+  inspectDirty = false,
+  inspectCompiling = false;
+// Long setup is split into short tasks so neighbouring apps stay responsive.
+let sliceStart = performance.now();
+// A plain task (not scheduler.yield, whose continuations outrank rendering)
+// lets the browser paint between slices.
+const yieldTask = () => new Promise((resolve) => setTimeout(resolve, 0));
+async function breathe() {
+  if (performance.now() - sliceStart < 12) return;
+  await yieldTask();
+  sliceStart = performance.now();
+}
 const toast = (message) => {
   $("toast").textContent = message;
   $("toast").classList.add("visible");
@@ -74,12 +103,17 @@ function clearKeys() {
 }
 async function init() {
   try {
+    await yieldTask();
     renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, SETTINGS.maxPixelRatio));
+    quality.max = quality.ratio = Math.min(
+      devicePixelRatio,
+      SETTINGS.maxPixelRatio,
+    );
+    renderer.setPixelRatio(quality.ratio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -96,13 +130,24 @@ async function init() {
     );
     camera.position.set(-0.84, 1.67, 4.85);
     setCamera();
+    await yieldTask();
     const sources = TEXTURE_SOURCES;
     const loader = new THREE.TextureLoader();
+    const bitmaps = new THREE.ImageBitmapLoader().setOptions({
+        imageOrientation: "flipY",
+        premultiplyAlpha: "none",
+      }),
+      flips = bitmapsFlip();
     const textures = {};
     let loaded = 0;
     await Promise.all(
-      sources.map(async ([key, path]) => {
-        textures[key] = await loader.loadAsync(path);
+      sources.map(async ([key, path, gpuOnly]) => {
+        if (gpuOnly && (await flips)) {
+          // Pre-flipped bitmap: same orientation as a flipY image upload.
+          textures[key] = new THREE.Texture(await bitmaps.loadAsync(path));
+          textures[key].flipY = false;
+          textures[key].needsUpdate = true;
+        } else textures[key] = await loader.loadAsync(path);
         textures[key].colorSpace = THREE.SRGBColorSpace;
         if (key.startsWith("art-"))
           textures[key].userData.tripArtwork =
@@ -115,16 +160,18 @@ async function init() {
         $("load-bar").style.width = `${(++loaded / sources.length) * 75}%`;
       }),
     );
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const shop = buildShop(textures);
+    await yieldTask();
+    sliceStart = performance.now();
+    const shop = await buildShop(textures, breathe);
     objects = shop.objects;
     colliders = shop.colliders;
     mobiles = shop.mobiles;
     personalObjects = shop.personal;
     objectById = new Map(objects.map((o) => [o.userData.id, o]));
-    optimize(shop.room, objects);
-    const batching = instanceRepeatedItems(shop.room, objects);
+    await optimize(shop.room, objects, breathe);
+    const batching = await instanceRepeatedItems(shop.room, objects, breathe);
     world.add(shop.room);
+    await yieldTask();
     environmentTarget = createShopEnvironment(renderer);
     world.environment = environmentTarget.texture;
     world.environmentIntensity = 0.39;
@@ -140,12 +187,47 @@ async function init() {
     setupInspector();
     setupCollection();
     resize();
-    $("load-bar").style.width = "100%";
-    renderer.render(world, camera);
+    // Upload textures a few at a time, then compile shaders off the main
+    // thread, so the first frame no longer blocks for seconds.
+    await yieldTask();
+    sliceStart = performance.now();
+    const maps = new Set();
+    world.traverse((o) => {
+      const map = o.material?.map;
+      if (!map) return;
+      maps.add(map);
+      if (o.material.alphaTest > 0) prepareAlphaMask(map);
+    });
+    for (const map of maps) {
+      renderer.initTexture(map);
+      await breathe();
+    }
+    const shadowShaders = warmShadowShaders();
+    await Promise.all([renderer.compileAsync(world, camera), shadowShaders]);
+    // Upload geometry a slice at a time behind the loading screen, so the
+    // first full frame does not stall on thousands of buffer uploads.
+    const meshes = [];
+    world.traverse((o) => o.isMesh && o.visible && meshes.push(o));
+    const slice = Math.ceil(meshes.length / 6);
     shopSun.shadow.autoUpdate = false;
+    for (let i = 0; i < meshes.length; i += slice) {
+      await yieldTask();
+      meshes.forEach((m, j) => (m.visible = j >= i && j < i + slice));
+      shopSun.shadow.needsUpdate = true;
+      renderer.render(world, camera);
+    }
+    meshes.forEach((m) => (m.visible = true));
+    await yieldTask();
+    $("load-bar").style.width = "100%";
+    // Pose the paper as the loop will, so resuming from this still frame is seamless.
+    swayMobiles();
+    shopSun.shadow.needsUpdate = true;
+    renderer.render(world, camera);
+    (await shadowShaders)();
     $("loading").classList.add("done");
     setTimeout(() => ($("loading").hidden = true), 700);
     document.body.dataset.ready = "true";
+    if (parent !== window) parent.postMessage({ type: "platform:ready" }, "*");
     window.shopStatus = {
       objects: objects.length,
       types: Object.keys(CATALOG).length,
@@ -164,7 +246,8 @@ async function init() {
       ).size,
       ...batching,
     };
-    requestAnimationFrame(animate);
+    started = true;
+    syncRunning();
   } catch (err) {
     console.error("Shop initialization failed", err);
     $("load-status").textContent =
@@ -177,17 +260,89 @@ async function init() {
     $("loading").append(retry);
   }
 }
-function setupInspector() {
+// ImageBitmaps decode off the main thread. Use them only where the browser
+// honours imageOrientation for fetched images (otherwise textures would flip).
+async function bitmapsFlip() {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1;
+    c.height = 2;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(0, 0, 1, 1);
+    ctx.fillStyle = "#00f";
+    ctx.fillRect(0, 1, 1, 1);
+    const blob = await new Promise((resolve) => c.toBlob(resolve));
+    const bitmap = await createImageBitmap(blob, { imageOrientation: "flipY" });
+    ctx.clearRect(0, 0, 1, 2);
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return ctx.getImageData(0, 0, 1, 1).data[2] > 128;
+  } catch {
+    return false;
+  }
+}
+// The shadow pass compiles its depth shaders on first use, which compileAsync
+// does not cover. Stand-ins compiled under the same conditions (render target,
+// no fog, same lights) let it find them ready. Resolves to a cleanup function.
+function warmShadowShaders() {
+  const sides = {
+    [THREE.FrontSide]: THREE.BackSide,
+    [THREE.BackSide]: THREE.FrontSide,
+    [THREE.DoubleSide]: THREE.DoubleSide,
+  };
+  const standIns = new THREE.Group(),
+    seen = new Set();
+  world.traverse((o) => {
+    const m = o.material;
+    if (!o.isMesh || !o.castShadow || Array.isArray(m)) return;
+    if (!o.layers.test(camera.layers)) return;
+    const side = m.shadowSide ?? sides[m.side],
+      key = [o.isInstancedMesh, o.receiveShadow, side, m.map?.channel];
+    if (seen.has(key + m.alphaTest)) return;
+    seen.add(key + m.alphaTest);
+    const depth = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      side,
+      map: m.map,
+      alphaTest: m.alphaTest,
+    });
+    const standIn = o.isInstancedMesh
+      ? new THREE.InstancedMesh(o.geometry, depth, 1)
+      : new THREE.Mesh(o.geometry, depth);
+    standIn.receiveShadow = o.receiveShadow;
+    standIns.add(standIn);
+  });
+  const target = new THREE.WebGLRenderTarget(1, 1),
+    fog = world.fog;
+  renderer.setRenderTarget(target);
+  world.fog = null;
+  const ready = renderer.compileAsync(standIns, camera, world);
+  world.fog = fog;
+  renderer.setRenderTarget(null);
+  // Dispose only after the real shadow pass holds the programs.
+  return ready.then(() => () => {
+    target.dispose();
+    standIns.traverse((o) => o.material?.dispose());
+  });
+}
+// The close-up view gets its own WebGL context only once something is inspected.
+function inspectorRenderer() {
+  if (inspectRenderer) return inspectRenderer;
   inspectRenderer = new THREE.WebGLRenderer({
     canvas: $("object-view"),
     antialias: true,
     alpha: true,
   });
-  inspectRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  inspectRenderer.setPixelRatio(quality.max);
   inspectRenderer.setClearColor(0x000000, 0);
   inspectRenderer.outputColorSpace = THREE.SRGBColorSpace;
   inspectRenderer.toneMapping = THREE.ACESFilmicToneMapping;
   inspectRenderer.toneMappingExposure = 1.12;
+  inspectRenderer.setSize(innerWidth, innerHeight, false);
+  return inspectRenderer;
+}
+function setupInspector() {
   inspectScene = new THREE.Scene();
   inspectScene.environment = environmentTarget.texture;
   inspectScene.environmentIntensity = 0.58;
@@ -213,14 +368,26 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  if (inspectRenderer) {
-    inspectRenderer.setSize(w, h, false);
+  quality.skip = 20;
+  renderedView = "";
+  if (inspectCamera) {
+    inspectRenderer?.setSize(w, h, false);
     inspectCamera.aspect = w / h;
     inspectCamera.updateProjectionMatrix();
     if (heldClone) positionInspection();
   }
+  // Resizing clears the canvas; a paused shop still shows a complete frame.
+  if (started) {
+    inspectDirty = true;
+    if (!frame) requestAnimationFrame(renderStill);
+  }
 }
 addEventListener("resize", resize);
+function renderStill() {
+  if (frame || !started || readerDialog.open) return;
+  if (inspecting) renderInspector();
+  else renderer.render(world, camera);
+}
 function owner(o) {
   let p = o;
   while (p) {
@@ -228,6 +395,41 @@ function owner(o) {
     p = p.parent;
   }
   return null;
+}
+// One half-resolution alpha mask per image, shared by every atlas clone. It is
+// decoded off the main thread during loading, so the first hover never stalls.
+const alphaMasks = new Map();
+function readAlpha(source, width, height) {
+  const c = document.createElement("canvas");
+  c.width = width;
+  c.height = height;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(source, 0, 0, width, height);
+  return ctx.getImageData(0, 0, width, height);
+}
+function maskSize(map) {
+  return [Math.ceil(map.image.width / 2), Math.ceil(map.image.height / 2)];
+}
+function prepareAlphaMask(map) {
+  const id = map.source.uuid;
+  if (alphaMasks.has(id)) return;
+  const [width, height] = maskSize(map);
+  alphaMasks.set(id, null);
+  createImageBitmap(map.image, { resizeWidth: width, resizeHeight: height })
+    .then((bitmap) => {
+      if (!alphaMasks.get(id))
+        alphaMasks.set(id, readAlpha(bitmap, width, height));
+      bitmap.close();
+    })
+    .catch(() => {});
+}
+function alphaMask(map) {
+  let mask = alphaMasks.get(map.source.uuid);
+  if (!mask) {
+    mask = readAlpha(map.image, ...maskSize(map));
+    alphaMasks.set(map.source.uuid, mask);
+  }
+  return mask;
 }
 function pick(p = pointer) {
   if (!camera) return null;
@@ -244,15 +446,7 @@ function pick(p = pointer) {
       if (map?.image) {
         const uv = hit.uv.clone();
         map.transformUv(uv);
-        if (!map.userData.alpha) {
-          const c = document.createElement("canvas");
-          c.width = map.image.width;
-          c.height = map.image.height;
-          const ctx = c.getContext("2d", { willReadFrequently: true });
-          ctx.drawImage(map.image, 0, 0);
-          map.userData.alpha = ctx.getImageData(0, 0, c.width, c.height);
-        }
-        const data = map.userData.alpha;
+        const data = alphaMask(map);
         const x = Math.min(
             data.width - 1,
             Math.max(0, Math.floor(uv.x * data.width)),
@@ -271,14 +465,17 @@ function pick(p = pointer) {
 }
 function updateHover() {
   const obj = pick();
+  const changed = obj !== hovered;
   hovered = obj;
   if (obj) {
     outline.box.setFromObject(obj);
     outline.visible = true;
-    $("target-name").textContent = obj.userData.definition.name;
-    $("target-action").textContent = obj.userData.definition.reader
-      ? "Open book · E"
-      : "Pick up · E";
+    if (changed) {
+      $("target-name").textContent = obj.userData.definition.name;
+      $("target-action").textContent = obj.userData.definition.reader
+        ? "Open book · E"
+        : "Pick up · E";
+    }
     $("target").hidden = false;
     canvas.style.cursor = obj.userData.definition.reader ? "pointer" : "grab";
   } else {
@@ -332,6 +529,16 @@ function inspect(obj) {
   zoom = 1;
   inspectScene.add(pivot);
   positionInspection();
+  // Clear the previous object and compile new materials without blocking;
+  // the souvenir appears as soon as its shaders are ready.
+  const view = inspectorRenderer();
+  view.clear();
+  inspectCompiling = true;
+  view.compileAsync(inspectScene, inspectCamera).then(() => {
+    if (heldClone !== pivot) return;
+    inspectCompiling = false;
+    invalidateInspector();
+  });
   $("object-title").textContent = def.name;
   $("object-category").textContent = def.category;
   $("object-description").textContent = def.description;
@@ -413,14 +620,17 @@ const bookReader = createBookReader({
   beforeOpen() {
     clearKeys();
     transition = null;
-    $("travel-veil").style.opacity = "0";
+    setVeil(0);
     hovered = null;
     outline.visible = false;
     $("target").hidden = true;
+    // The book has its own page-turning loop; the shop sleeps behind it.
+    stopLoop();
   },
   afterClose() {
     clearKeys();
     pickSignature = "";
+    syncRunning();
   },
 });
 function openBookReader(obj) {
@@ -439,6 +649,11 @@ function closeInspection() {
   $("inspector").close();
   clearKeys();
   (lastFocused || canvas).focus({ preventScroll: true });
+  syncRunning();
+}
+function invalidateInspector() {
+  inspectDirty = true;
+  syncRunning();
 }
 $("close-inspect").onclick = closeInspection;
 $("inspector").addEventListener("cancel", (e) => {
@@ -448,12 +663,14 @@ $("inspector").addEventListener("cancel", (e) => {
 function changeZoom(delta) {
   zoom = THREE.MathUtils.clamp(zoom + delta, 0.55, 1.9);
   positionInspection();
+  invalidateInspector();
 }
 $("inspect-bottom-view").onclick = () => {
   const d = held?.userData.definition;
   const back = d?.sculpted && d.kind !== "mug";
   inspectOrbit.pitch = back ? 0.08 : -Math.PI / 2;
   inspectOrbit.yaw = back ? Math.PI : 0;
+  invalidateInspector();
 };
 $("zoom-in").onclick = () => changeZoom(0.15);
 $("zoom-out").onclick = () => changeZoom(-0.15);
@@ -462,6 +679,7 @@ $("reset-object").onclick = () => {
   inspectOrbit.pitch = 0.12;
   zoom = 1;
   positionInspection();
+  invalidateInspector();
 };
 const inspectCanvas = $("object-view");
 inspectCanvas.addEventListener("pointerdown", (e) => {
@@ -485,6 +703,7 @@ inspectCanvas.addEventListener("pointermove", (e) => {
       -Math.PI,
       Math.PI,
     );
+    invalidateInspector();
   }
 });
 for (const event of ["pointerup", "pointercancel"])
@@ -583,6 +802,7 @@ addEventListener("keydown", (e) => {
     if (actions[e.code]) {
       e.preventDefault();
       actions[e.code]();
+      invalidateInspector();
     }
     return;
   }
@@ -603,7 +823,7 @@ addEventListener("keyup", (e) => keys.delete(e.code));
 addEventListener("blur", clearKeys);
 document.addEventListener("visibilitychange", () => {
   clearKeys();
-  previousTime = 0;
+  syncRunning();
 });
 function canStand(x, z) {
   return positionAllowed(x, z, colliders);
@@ -652,7 +872,7 @@ function gotoZone(name) {
     yawTo: yaw + Math.atan2(Math.sin(newYaw - yaw), Math.cos(newYaw - yaw)),
     pitchFrom: pitch,
     pitchTo: newPitch,
-    start: performance.now(),
+    start: clock,
   };
   document
     .querySelectorAll("[data-zone]")
@@ -677,6 +897,7 @@ function openModal(id) {
   clearKeys();
   $(id).showModal();
 }
+for (const d of dialogs) d.addEventListener("close", syncRunning);
 $("help-btn").onclick = () => openModal("help");
 $("reference-btn").onclick = () => openModal("reference");
 document
@@ -734,62 +955,161 @@ $("touch-pick").onclick = () => {
   if (o) inspect(o);
   else toast("Aim the center dot at a souvenir.");
 };
+function canRun() {
+  return started && hostActive && !document.hidden && !readerDialog.open;
+}
+function syncRunning() {
+  if (!canRun()) stopLoop();
+  else if (!frame) frame = requestAnimationFrame(animate);
+}
+function stopLoop() {
+  cancelAnimationFrame(frame);
+  frame = 0;
+  previousTime = 0;
+  renderedView = "";
+  quality.skip = 20;
+}
+function renderInspector() {
+  if (!heldClone || inspectCompiling) return;
+  inspectDirty = false;
+  heldClone.rotation.set(inspectOrbit.pitch, inspectOrbit.yaw, 0, "YXZ");
+  inspectRenderer.render(inspectScene, inspectCamera);
+}
+// Adaptive resolution: lower the pixel ratio while frames are sustainedly slow
+// (below ~46 fps) and step back up once they keep a 60 fps pace again.
+const quality = {
+  max: 1,
+  ratio: 1,
+  skip: 20,
+  deltas: [],
+  calm: 0,
+  raised: false,
+  flips: 0,
+};
+function sampleFrame(delta) {
+  if (quality.skip > 0) return quality.skip--;
+  const q = quality,
+    d = q.deltas;
+  d.push(delta);
+  if (d.length < 45) return;
+  const mean = d.reduce((a, b) => a + b, 0) / d.length;
+  d.length = 0;
+  const target = 1000 / 60,
+    floor = Math.max(0.75, q.max * 0.6);
+  let ratio = q.ratio;
+  if (mean > target * 1.3 && ratio > floor) {
+    ratio = Math.max(floor, ratio * 0.85);
+    if (q.raised) q.flips++;
+    q.raised = false;
+    q.calm = 0;
+  } else if (mean < target * 1.08 && ratio < q.max && q.flips < 3) {
+    if (++q.calm >= 4) {
+      ratio = Math.min(q.max, ratio / 0.85);
+      q.raised = true;
+      q.calm = 0;
+    }
+  } else q.calm = 0;
+  if (ratio === q.ratio) return;
+  q.ratio = ratio;
+  renderer.setPixelRatio(ratio);
+  resize();
+}
+function setVeil(opacity) {
+  const value = String(opacity);
+  if (veil.style.opacity !== value) veil.style.opacity = value;
+}
+function swayMobiles() {
+  if (reducedMotion) return;
+  const ms = clock * 1000;
+  mobiles.forEach((o, i) => {
+    o.rotation.y =
+      (o.userData.restY || 0) + Math.sin(ms * 0.00045 + i * 1.39) * 0.075;
+    o.rotation.z =
+      (o.userData.restZ || 0) + Math.sin(ms * 0.00065 + i * 0.93) * 0.023;
+  });
+}
 function animate(time) {
-  requestAnimationFrame(animate);
-  if (document.hidden) return;
-  const dt = Math.min((time - (previousTime || time)) / 1000, 0.05);
+  frame = 0;
+  const delta = previousTime ? time - previousTime : 0;
+  const dt = Math.min(delta / 1000, 0.05);
   previousTime = time;
-  if ($("book-reader").open) return;
-  if (inspecting && heldClone) {
-    heldClone.rotation.set(inspectOrbit.pitch, inspectOrbit.yaw, 0, "YXZ");
-    inspectRenderer.render(inspectScene, inspectCamera);
+  if (inspecting) {
+    // The close-up only changes with input, so it renders on demand.
+    if (inspectDirty) renderInspector();
+    previousTime = 0;
     return;
   }
-  if (!isModal()) {
-    if (transition) {
-      const t = THREE.MathUtils.clamp((time - transition.start) / 440, 0, 1);
-      $("travel-veil").style.opacity = String(Math.sin(t * Math.PI));
-      if (t >= 0.5 && !transition.arrived) {
-        camera.position.copy(transition.to);
-        yaw = transition.yawTo;
-        pitch = transition.pitchTo;
-        setCamera();
-        transition.arrived = true;
-        pickSignature = "";
-      }
-      if (t === 1) {
-        transition = null;
-        $("travel-veil").style.opacity = "0";
-      }
-    } else {
-      $("travel-veil").style.opacity = "0";
-      movePlayer(dt);
+  // Dialogs cover the shop; it resumes when they close.
+  if (isModal()) return stopLoop();
+  frame = requestAnimationFrame(animate);
+  if (delta) sampleFrame(delta);
+  clock += dt;
+  if (transition) {
+    const t = THREE.MathUtils.clamp(
+      ((clock - transition.start) * 1000) / 440,
+      0,
+      1,
+    );
+    setVeil(Math.sin(t * Math.PI));
+    if (t >= 0.5 && !transition.arrived) {
+      camera.position.copy(transition.to);
+      yaw = transition.yawTo;
+      pitch = transition.pitchTo;
+      setCamera();
+      transition.arrived = true;
+      pickSignature = "";
     }
-    if (time - lastPick > 100 && !drag) {
-      const signature = [
-        pointer.x,
-        pointer.y,
-        camera.position.x,
-        camera.position.z,
-        pitch,
-        yaw,
-      ]
-        .map((n) => n.toFixed(4))
-        .join();
-      if (signature !== pickSignature) {
-        updateHover();
-        pickSignature = signature;
-      }
-      lastPick = time;
+    if (t === 1) {
+      transition = null;
+      setVeil(0);
     }
+  } else {
+    setVeil(0);
+    movePlayer(dt);
   }
-  if (!reducedMotion)
-    mobiles.forEach((o, i) => {
-      o.rotation.y =
-        (o.userData.restY || 0) + Math.sin(time * 0.00045 + i * 1.39) * 0.075;
-      o.rotation.z =
-        (o.userData.restZ || 0) + Math.sin(time * 0.00065 + i * 0.93) * 0.023;
-    });
+  if (time - lastPick > 100 && !drag) {
+    const signature = [
+      pointer.x,
+      pointer.y,
+      camera.position.x,
+      camera.position.z,
+      pitch,
+      yaw,
+    ]
+      .map((n) => n.toFixed(4))
+      .join();
+    if (signature !== pickSignature) {
+      updateHover();
+      pickSignature = signature;
+    }
+    lastPick = time;
+  }
+  swayMobiles();
+  // With reduced motion nothing sways, so an unchanged view needs no new frame.
+  if (reducedMotion) {
+    const view = [
+      camera.position.x,
+      camera.position.z,
+      yaw,
+      pitch,
+      outline.visible && hovered?.userData.id,
+      shopSun.shadow.needsUpdate,
+    ].join();
+    if (view === renderedView) return;
+    renderedView = view;
+  }
   renderer.render(world, camera);
 }
+// Release both GPU contexts when the page goes away (e.g. swiped out of the feed).
+addEventListener("pagehide", (event) => {
+  started = false;
+  stopLoop();
+  for (const r of [renderer, inspectRenderer]) {
+    r?.dispose();
+    r?.forceContextLoss();
+  }
+  renderer = inspectRenderer = null;
+  if (event.persisted)
+    addEventListener("pageshow", () => location.reload(), { once: true });
+});
 init();

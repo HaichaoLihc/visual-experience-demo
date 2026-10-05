@@ -3,7 +3,11 @@ const refs = new WeakMap();
 const hiddenMatrix = new T.Matrix4().makeScale(0, 0, 0);
 // Share repeated geometry on the GPU while retaining each gift's original
 // scene subtree for close inspection, identification and correct placement.
-export function instanceRepeatedItems(room, objects) {
+export async function instanceRepeatedItems(
+  room,
+  objects,
+  pause = async () => {},
+) {
   room.updateMatrixWorld(true);
   const inv = room.matrixWorld.clone().invert(),
     groups = new Map(),
@@ -13,16 +17,18 @@ export function instanceRepeatedItems(room, objects) {
     if (geoCache.has(geo.uuid)) return geoCache.get(geo.uuid);
     let h = 2166136261,
       h2 = 5381;
-    const feed = (v) => {
-      const n = Math.round(v * 1000000);
-      h = Math.imul(h ^ n, 16777619);
-      h2 = Math.imul(h2, 33) ^ n;
-    };
-    for (const key of ["position", "normal", "uv"]) {
-      const a = geo.attributes[key];
-      if (a) for (const v of a.array) feed(v);
+    // One tight loop per array (no per-value closure) keeps hashing fast.
+    const arrays = ["position", "normal", "uv"]
+      .map((key) => geo.attributes[key]?.array)
+      .concat(geo.index ? [geo.index.array] : []);
+    for (const array of arrays) {
+      if (!array) continue;
+      for (let i = 0, n = array.length; i < n; i++) {
+        const v = Math.round(array[i] * 1000000);
+        h = Math.imul(h ^ v, 16777619);
+        h2 = Math.imul(h2, 33) ^ v;
+      }
     }
-    if (geo.index) for (const v of geo.index.array) feed(v);
     const k = [
       geo.attributes.position.count,
       geo.index?.count || 0,
@@ -32,7 +38,7 @@ export function instanceRepeatedItems(room, objects) {
     geoCache.set(geo.uuid, k);
     return k;
   }
-  for (const item of objects)
+  for (const item of objects) {
     item.traverse((m) => {
       if (m.isMesh && !Array.isArray(m.material)) {
         originalCalls++;
@@ -48,6 +54,8 @@ export function instanceRepeatedItems(room, objects) {
           });
       }
     });
+    await pause();
+  }
   const batches = [];
   for (const group of groups.values()) {
     // Swaying paper must retain its independent animation transform.

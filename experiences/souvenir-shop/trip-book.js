@@ -3,8 +3,8 @@ import { box, plane, mat, textured } from "./materials.js";
 
 export const BOOK_TYPE = "journey-photobook";
 export const BOOK_URL = "./books/tibet-yunnan/index.html";
-export const BOOK_COVER = "./books/tibet-yunnan/assets/pages/page-00.png";
-export const BOOK_BACK = "./books/tibet-yunnan/assets/pages/page-41.png";
+export const BOOK_COVER = "./books/tibet-yunnan/assets/pages/page-00.webp";
+export const BOOK_BACK = "./books/tibet-yunnan/assets/pages/page-41.webp";
 export const BOOK_CATALOG = {
   [BOOK_TYPE]: {
     name: "Tibet and Yunnan",

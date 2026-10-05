@@ -2,5 +2,5 @@
 export const SETTINGS = Object.freeze({
   walkingSpeed: 1.65 * 0.7,
   sprintSpeed: 2.5 * 0.7,
-  maxPixelRatio: 1.7,
+  maxPixelRatio: 1.5,
 });

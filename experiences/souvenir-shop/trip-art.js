@@ -148,7 +148,7 @@ export const MOBILE_TITLES = [
 export const sourceUrl = (n) =>
   `./assets/personal/photo-${String(n).padStart(3, "0")}.jpg`;
 export const artUrl = (i) =>
-  `./assets/trip-art/art-${String(i).padStart(2, "0")}.jpg`;
+  `./assets/trip-art/art-${String(i).padStart(2, "0")}.webp`;
 export function artForPhoto(textures, n) {
   const i = TRIP_ART.findIndex((a) => a.photo === n);
   return (

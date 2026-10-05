@@ -11,13 +11,13 @@
 // half-float buffer, with a mirrored, blurred copy for the floor, a mip-chain bloom, and a
 // final tone-mapping pass.
 
-import { StoryView } from './story.js';
+import { StoryView } from './story.js?v=smooth';
 import { clamp, smooth, damp, mulberry } from './math.js';
-import { createGLHelpers } from './gl.js';
+import { createGLHelpers } from './gl.js?v=smooth';
 import { loadCatalog } from './catalog.js';
-import { loadTextures } from './photos.js';
+import { loadTextures } from './photos.js?v=smooth';
 import { buildStories, NF } from './stories.js';
-import { IDLE, FIBRE_VS, FIBRE_FS, FLOOR_VS, FLOOR_FS, POST_VS, DOWN_FS, UP_FS, BLUR_FS, COMPOSITE_FS } from './shaders.js';
+import { IDLE, FIBRE_VS, FIBRE_FS, FLOOR_VS, FLOOR_FS, POST_VS, DOWN_FS, UP_FS, BLUR_FS, COMPOSITE_FS } from './shaders.js?v=smooth';
 
 const canvas = document.getElementById('stream');
 const CAPTURE = new URLSearchParams(location.search).has('capture');
@@ -30,6 +30,10 @@ const SEG = 64;           // segments per fibre
 const CH = 15;            // height of the bar the curtain hangs from
 const YB = 1.05;          // height where fibres start to bend onto the floor
 const F = 1.6;            // focal length (NDC)
+const MIRROR_DPR = 0.5;   // the mirror image on the floor is blurred anyway: half a pixel per CSS px is plenty
+// Under sustained load the threads are drawn at a lower resolution (scaled up under the bloom and the
+// grain, which stay sharp), and at full resolution again once there is room.
+const QUALITY = [1, 0.75, 0.5];
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const rng = mulberry(0x2545f491);
@@ -46,7 +50,7 @@ const fib = {
 };
 const P = {}, T = {}, vaos = {};
 let RT = null, arrTex = null;
-let program, dataTexture, updateTexture, target, freeTarget;
+let program, finish, dataTexture, updateTexture, target, freeTarget;
 
 const cam = { x: 0, y: 0, ls: 0, lsT: 0, vx: 0, vy: 0 };
 let anchor = null, motion = 1;
@@ -56,9 +60,12 @@ let kbLine = -1;
 const select = { line: -1, t: 0, target: 0 };
 const pluck = { line: -1, age: 99, amp: 0 };
 const idle = Array.from({ length: IDLE }, () => ({ line: -1, age: 99 }));
+const idleL = new Float32Array(IDLE), idleA = new Float32Array(IDLE);
 let idleNext = 2.5;
 let flow = 1, paused = false, time = 0, intro = 0, lastInput = 0;
-let sleeping = false, last = performance.now(), zoomUntil = 0;
+let sleeping = false, last = performance.now(), zoomUntil = 0, meterZ = '';
+let booted = false, running = false, lost = false, raf = 0, resizePending = false;
+const load = { level: 0, floor: QUALITY.length - 1, before: 0, skip: 30, frames: 0, sum: 0, retryAt: 0, backoff: 8000 };
 let drag = null, pinch = null;
 const touches = new Map();
 let view = null, lsBeforeStory = null;
@@ -71,10 +78,12 @@ const LS_MAX = () => Math.log(Math.min(W, H) * 0.55 / PHOTO_W);
 const camDist = () => F * H / (2 * Math.exp(cam.ls));
 const zoomT = () => clamp((cam.ls - LS_MIN()) / (LS_MAX() - LS_MIN()), 0, 1);
 
-function unproject(sx, sy) {
+function unproject(sx, sy, out = {}) {
   const d = camDist();
-  return { x: cam.x + (sx / W * 2 - 1) * (W / H) * d / F, y: cam.y + (1 - sy / H * 2) * d / F };
+  out.x = cam.x + (sx / W * 2 - 1) * (W / H) * d / F; out.y = cam.y + (1 - sy / H * 2) * d / F;
+  return out;
 }
+const PICK = {}, ANCHOR = {}, HAND = {}, AWAY = Object.freeze({ x: 0, y: -99 });   // scratch points for every frame
 function project(x, y) {
   const d = camDist();
   return { x: ((x - cam.x) * F / d / (W / H) + 1) / 2 * W, y: (1 - (y - cam.y) * F / d) / 2 * H };
@@ -121,7 +130,7 @@ function disp(i, y) { // mirrors disp() in the shaders, for picking threads
 }
 // The thread nearest a point on screen, with a little stickiness so hovering feels calm.
 function pickLine(sx, sy) {
-  const p = unproject(sx, sy);
+  const p = unproject(sx, sy, PICK);
   if (p.y < -0.4 || p.y > CH + 0.25 || Math.abs(p.x) > CW / 2 + 1.4) return -1;
   const y = clamp(p.y, YB, CH), scale = Math.exp(cam.ls);
   const tol = Math.max(10 / scale, SPACING * 0.6);
@@ -157,9 +166,9 @@ function onStoryShow(i) {
   if (lsBeforeStory == null) lsBeforeStory = cam.lsT;
   hideLabel();
 }
-function onStoryCovered() { sleeping = true; }
+function onStoryCovered() { sleeping = true; syncRunning(); }
 function onStoryHide() {
-  sleeping = false; last = performance.now();
+  sleeping = false; syncRunning();
   select.target = 0;
   if (lsBeforeStory != null) { cam.lsT = lsBeforeStory; lsBeforeStory = null; }
   canvas.focus({ preventScroll: true });
@@ -255,18 +264,26 @@ addEventListener('keydown', e => {
 });
 
 function resize() {
+  resizePending = false;
   W = innerWidth; H = innerHeight; DPR = Math.min(devicePixelRatio || 1, 2);
   PW = Math.round(W * DPR); PH = Math.round(H * DPR);
   canvas.width = PW; canvas.height = PH;
   if (RT) { freeTarget(RT.scene); RT.refl.forEach(freeTarget); RT.bloom.forEach(freeTarget); }
+  const world = QUALITY[load.level], mirror = Math.min(DPR, MIRROR_DPR);
+  load.skip = 30;
   RT = {
-    scene: target(PW, PH),
-    refl: [target(PW / 2, PH / 2), target(PW / 2, PH / 2)],
+    scene: target(PW * world, PH * world),
+    refl: [target(W * mirror, H * mirror), target(W * mirror, H * mirror)],
     bloom: Array.from({ length: 6 }, (_, i) => target(PW / 2 ** (i + 1), PH / 2 ** (i + 1))),
   };
   if (stories.length) cam.lsT = clamp(cam.lsT, LS_MIN(), LS_MAX());
 }
-addEventListener('resize', () => { if (RT) resize(); });
+// Coalesced: the render targets are rebuilt at most once per frame, just before it is drawn.
+addEventListener('resize', () => {
+  if (!booted) { if (RT) resize(); return; }
+  resizePending = true;
+  if (!raf) raf = requestAnimationFrame(frame);
+});
 
 // ────────────────────────────────────────────────────────────── frame
 
@@ -276,7 +293,7 @@ function step(dt, now) {
   cam.lsT = clamp(cam.lsT, lsMin, lsMax);
   cam.ls = damp(cam.ls, cam.lsT, 5.5, dt);
   if (anchor) {
-    const p = unproject(anchor.sx, anchor.sy);
+    const p = unproject(anchor.sx, anchor.sy, ANCHOR);
     const ox = anchor.wx - p.x, oy = anchor.wy - p.y;
     cam.x += ox; cam.y += oy;
     if (anchor.drag) { cam.vx = damp(cam.vx, ox / Math.max(dt, 1e-3), 18, dt); cam.vy = damp(cam.vy, oy / Math.max(dt, 1e-3), 18, dt); }
@@ -310,7 +327,7 @@ function step(dt, now) {
   const moved = pointer.lastX < 0 ? 0 : (pointer.x - pointer.lastX);
   pointer.lastX = pointer.x;
   pointer.speed = damp(pointer.speed, Math.abs(moved) / Math.max(dt, 1e-3), 10, dt);
-  const wp = pointer.x >= 0 ? unproject(pointer.x, pointer.y) : { x: 0, y: -99 };
+  const wp = pointer.x >= 0 ? unproject(pointer.x, pointer.y, HAND) : AWAY;
   pointer.wvx = damp(pointer.wvx, moved / Math.max(dt, 1e-3) / scale, 12, dt);
   const active = (pointer.inside || kbLine >= 0) && !pinch && !view.isOpen && (kbLine >= 0 || (wp.y > -0.5 && wp.y < CH + 0.3));
   pointer.reach = damp(pointer.reach, active ? (line >= 0 ? 0.2 : 0.08) + Math.min(pointer.speed / 900, 0.6) : 0, 4, dt);
@@ -345,20 +362,23 @@ function step(dt, now) {
   if (!REDUCED && idleNext <= 0 && hover.t < 0.05 && now - lastInput > 1500) {
     const g = idle.find(g => g.age > 3.4);
     if (g) {
-      const x = unproject(W * (0.15 + rng() * 0.7), H / 2).x;
+      const x = unproject(W * (0.15 + rng() * 0.7), H / 2, PICK).x;
       g.line = clamp(Math.round((x + CW / 2) / SPACING), 0, NF - 1); g.age = 0;
     }
     idleNext = 0.9 + rng() * 1.6;
   }
 
   body.classList.toggle('zooming', now < zoomUntil);
-  $meter.style.setProperty('--z', zt.toFixed(4));
+  const z = zt.toFixed(4);
+  if (z !== meterZ) $meter.style.setProperty('--z', meterZ = z);
 }
 
-function bindCommon(p, hpx, mirror) {
-  const u = p.u;
+// Sizes in the shaders are measured in reference pixels: the screen's for the world, half of them for its
+// mirror image. uK converts them to the pixels of the buffer actually drawn into.
+function bindCommon(p, rt, mirror) {
+  const u = p.u, hpx = mirror ? PH / 2 : PH;
   gl.uniform3f(u.uCam, cam.x, cam.y, camDist());
-  gl.uniform1f(u.uF, F); gl.uniform1f(u.uAspect, W / H); gl.uniform1f(u.uHpx, hpx);
+  gl.uniform1f(u.uF, F); gl.uniform1f(u.uAspect, W / H); gl.uniform1f(u.uHpx, hpx); gl.uniform1f(u.uK, rt.h / hpx);
   gl.uniform1f(u.uCW, CW); gl.uniform1f(u.uCH, CH); gl.uniform1f(u.uYB, YB);
   gl.uniform1f(u.uTime, time); gl.uniform1f(u.uMotion, motion);
   gl.uniform4f(u.uPluck, pluck.line, pluck.age, pluck.amp, 0);
@@ -381,7 +401,7 @@ function drawWorld(rt, mirror) {
     gl.bindVertexArray(vaos.quad); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  const pr = P.fibre, u = pr.u; gl.useProgram(pr.p); bindCommon(pr, rt.h, mirror);
+  const pr = P.fibre, u = pr.u; gl.useProgram(pr.p); bindCommon(pr, rt, mirror);
   gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, T.story.t); gl.uniform1i(u.uStory, 2);
   gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, T.layers.t); gl.uniform1i(u.uLayers, 3);
   gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D_ARRAY, arrTex); gl.uniform1i(u.uArr, 4);
@@ -391,21 +411,26 @@ function drawWorld(rt, mirror) {
   gl.uniform4f(u.uHover, hover.line, hover.t, 0, 0);
   gl.uniform1f(u.uDim, 0.22 * hover.t);
   gl.uniform2f(u.uSelect, select.line, select.t);
-  gl.uniform1fv(u.uIdleL, idle.map(g => g.line)); gl.uniform1fv(u.uIdleA, idle.map(g => g.age));
+  gl.uniform1fv(u.uIdleL, idleL); gl.uniform1fv(u.uIdleA, idleA);
   gl.bindVertexArray(vaos.fibre);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, (SEG + 1) * 2, NF);
 }
 
-function post(prog, dst, setup) {
+// One full-screen pass: source texture on unit 0, drawn into dst (or the canvas).
+function pass(prog, src, dst, name = 'uSrc') {
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst ? dst.fb : null);
   gl.viewport(0, 0, dst ? dst.w : PW, dst ? dst.h : PH);
-  gl.useProgram(prog.p); setup(prog.u);
-  gl.bindVertexArray(vaos.empty);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.useProgram(prog.p);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, src.tex); gl.uniform1i(prog.u[name], 0);
+  return prog.u;
 }
+function drawPass() { gl.bindVertexArray(vaos.empty); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+function blur(src, dst, dx, dy) { gl.uniform2f(pass(P.blur, src, dst).uDir, dx, dy); drawPass(); }
+function resample(prog, src, dst, w = src.w, h = src.h) { gl.uniform2f(pass(prog, src, dst).uTexel, 1 / w, 1 / h); drawPass(); }
 
 function render() {
   const zt = zoomT();
+  for (let k = 0; k < IDLE; k++) { idleL[k] = idle[k].line; idleA[k] = idle[k].age; }
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.fibS.t);
   gl.activeTexture(gl.TEXTURE1); updateTexture(T.fibD);
 
@@ -414,10 +439,10 @@ function render() {
   if (hasRefl) {
     drawWorld(RT.refl[0], true);
     gl.disable(gl.BLEND);
-    const [a, b] = RT.refl;
-    post(P.blur, b, u => { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, a.tex); gl.uniform1i(u.uSrc, 0); gl.uniform2f(u.uDir, 0, 2.2 / a.h); });
-    post(P.blur, a, u => { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, b.tex); gl.uniform1i(u.uSrc, 0); gl.uniform2f(u.uDir, 1.1 / a.w, 0); });
-    post(P.blur, b, u => { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, a.tex); gl.uniform1i(u.uSrc, 0); gl.uniform2f(u.uDir, 0, 5 / a.h); });
+    const [a, b] = RT.refl, rw = PW / 2, rh = PH / 2;   // radii in reference pixels, whatever the buffer's size
+    blur(a, b, 0, 2.2 / rh);
+    blur(b, a, 1.1 / rw, 0);
+    blur(a, b, 0, 5 / rh);
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.fibS.t);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T.fibD.t);
   }
@@ -427,44 +452,88 @@ function render() {
   // Bloom: a chain of progressively smaller, softer copies added back together.
   gl.disable(gl.BLEND);
   let src = RT.scene;
-  for (const dst of RT.bloom) {
-    const s = src;
-    post(P.down, dst, u => { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, s.tex); gl.uniform1i(u.uSrc, 0); gl.uniform2f(u.uTexel, 1 / s.w, 1 / s.h); });
-    src = dst;
-  }
+  for (const dst of RT.bloom) { resample(P.down, src, dst, src === RT.scene ? PW : src.w, src === RT.scene ? PH : src.h); src = dst; }
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
-  for (let i = RT.bloom.length - 1; i > 0; i--) {
-    const s = RT.bloom[i];
-    post(P.up, RT.bloom[i - 1], u => { gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, s.tex); gl.uniform1i(u.uSrc, 0); gl.uniform2f(u.uTexel, 1 / s.w, 1 / s.h); });
-  }
+  for (let i = RT.bloom.length - 1; i > 0; i--) resample(P.up, RT.bloom[i], RT.bloom[i - 1]);
   gl.disable(gl.BLEND);
 
-  post(P.composite, null, u => {
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, RT.scene.tex); gl.uniform1i(u.uScene, 0);
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, RT.bloom[0].tex); gl.uniform1i(u.uBloom, 1);
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, RT.refl[1].tex); gl.uniform1i(u.uRefl, 2);
-    gl.uniform1f(u.uBloomK, 0.16 - 0.12 * smooth(0.15, 0.6, zt));
-    gl.uniform1f(u.uReflK, 1);
-    gl.uniform1f(u.uHasRefl, hasRefl ? 1 : 0);
-    gl.uniform1f(u.uFloorV, floorV);
-    gl.uniform1f(u.uTime, time);
-    gl.uniform2f(u.uRes, PW, PH);
-  });
+  const u = pass(P.composite, RT.scene, null, 'uScene');
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, RT.bloom[0].tex); gl.uniform1i(u.uBloom, 1);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, RT.refl[1].tex); gl.uniform1i(u.uRefl, 2);
+  gl.uniform1f(u.uBloomK, 0.16 - 0.12 * smooth(0.15, 0.6, zt));
+  gl.uniform1f(u.uReflK, 1);
+  gl.uniform1f(u.uHasRefl, hasRefl ? 1 : 0);
+  gl.uniform1f(u.uFloorV, floorV);
+  gl.uniform1f(u.uTime, time);
+  gl.uniform2f(u.uRes, PW, PH);
+  drawPass();
 }
 
+// The loop runs only while the work is on screen and not covered by a story. A frame may still be
+// drawn while paused, to show a resized canvas.
 function frame(now) {
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (sleeping || document.hidden) return;
-  step(dt, now);
+  raf = 0;
+  if (lost) return;
+  if (resizePending) resize();
+  if (running) {
+    raf = requestAnimationFrame(frame);
+    adapt(now - last, now);
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+    step(dt, now);
+  }
   render();
+}
+
+// Mean frame interval over ~1.5 s windows: well behind the display drops a quality level; comfortably
+// on time climbs back, retried later and later if the climb did not hold. A drop that does not speed
+// things up (a frame-rate cap, a busy main thread) is undone and not tried again.
+function adapt(ms, now) {
+  if (load.skip > 0) { load.skip--; load.frames = load.sum = 0; return; }   // just resumed or resized
+  load.sum += ms;
+  if (++load.frames < 90) return;
+  const mean = load.sum / load.frames, before = load.before;
+  load.frames = load.sum = load.before = 0;
+  if (before && mean > before * 0.85) {
+    load.floor = --load.level; resizePending = true;
+  } else if (mean > 25 && load.level < load.floor) {
+    load.before = mean; load.level++; resizePending = true;
+    load.retryAt = now + load.backoff; load.backoff = Math.min(load.backoff * 2, 120000);
+  } else if (mean < 18 && load.level > 0 && now > load.retryAt) {
+    load.level--; resizePending = true;
+  }
+}
+
+// ────────────────────────────────────────────────────────────── host
+
+// The platform feed pauses works that are off screen.
+let hostActive = true;
+function syncRunning() {
+  view?.wake();
+  const on = booted && !lost && hostActive && !document.hidden && !sleeping;
+  if (on === running) return;
+  running = on;
+  if (on) { last = performance.now(); load.skip = 30; if (!raf) raf = requestAnimationFrame(frame); }   // resume without a jump
+  else if (raf && !resizePending) { cancelAnimationFrame(raf); raf = 0; }
+}
+addEventListener('message', event => {
+  if (event.source !== parent || event.data?.type !== 'platform:visibility') return;
+  hostActive = Boolean(event.data.active);
+  syncRunning();
+});
+document.addEventListener('visibilitychange', syncRunning);
+if (parent !== window) parent.postMessage({ type: 'platform:hello' }, '*');
+function announceReady() {
+  if (parent === window) return;
+  let sent = false;
+  const send = () => { if (!sent) { sent = true; parent.postMessage({ type: 'platform:ready' }, '*'); } };
+  requestAnimationFrame(send); setTimeout(send, 120);   // once the first frame is on screen
 }
 
 // ────────────────────────────────────────────────────────────── boot
 
-async function boot() {
-  if (!gl) throw new Error('WebGL 2 is not available');
-  ({ program, dataTexture, updateTexture, target, freeTarget } = createGLHelpers(gl));
+// Everything that lives on the GPU apart from the photographs; run again if the context is restored.
+function createGPUState() {
+  ({ program, finish, dataTexture, updateTexture, target, freeTarget } = createGLHelpers(gl));
   P.fibre = program(FIBRE_VS, FIBRE_FS);
   P.floor = program(FLOOR_VS, FLOOR_FS);
   P.down = program(POST_VS, DOWN_FS);
@@ -486,26 +555,62 @@ async function boot() {
   vaos.empty = gl.createVertexArray();
   gl.bindVertexArray(null);
 
+  RT = null;
   resize();
+}
+
+async function boot() {
+  if (!gl) throw new Error('WebGL 2 is not available');
+  createGPUState();
   const catalog = await loadCatalog();
   photos = catalog.photos;
   arrTex = await loadTextures(gl, photos, progress => $loader.style.setProperty('--p', progress.toFixed(3)));
+  if (lost) return;   // the page reloads once the context is back
+  Object.values(P).forEach(finish);
   buildFibres();
   stories = buildStories(photos, catalog.authored, catalog.journal);
   uploadStories();
 
   cam.x = 0; cam.y = HOME_Y; cam.lsT = LS_MIN(); cam.ls = cam.lsT - 0.25;
-  view = new StoryView({ stories, onShow: onStoryShow, onCovered: onStoryCovered, onHide: onStoryHide });
+  view = new StoryView({ stories, onShow: onStoryShow, onCovered: onStoryCovered, onHide: onStoryHide, active: () => hostActive && !document.hidden });
   body.classList.add('ready');
-  last = performance.now();
-  requestAnimationFrame(frame);
+  // The first frame is drawn even off screen (it warms the shaders and leaves a still in the canvas);
+  // the intro waits until the work is first on screen.
+  step(0, performance.now());
+  render();
+  booted = true;
+  announceReady();
+  syncRunning();
   view.route(); // a shared link opens straight into its story
   window.__undertow = { cam, stories, fib, get hover() { return hover; }, pickLine, chapterAt, project, unproject, openStory, zoomBy, LS_MIN, LS_MAX, get slot() { return SLOT; } };
 }
-boot().catch(err => {
+
+// A lost context (GPU reset, too many contexts) is rebuilt from the data kept on this side.
+canvas.addEventListener('webglcontextlost', event => {
+  event.preventDefault();
+  lost = true;
+  syncRunning();
+});
+canvas.addEventListener('webglcontextrestored', async () => {
+  if (!booted) { location.reload(); return; }
+  try {
+    createGPUState();
+    Object.values(P).forEach(finish);
+    for (const k of ['fibS', 'fibD', 'story', 'layers']) T[k] = dataTexture(T[k].w, T[k].h, T[k].data);
+    arrTex = await loadTextures(gl, photos, () => {});
+    lost = false;
+    render();
+    syncRunning();
+  } catch (err) { fail(err); }
+});
+// Leaving the page (or the feed unmounting this frame) hands the GPU memory back at once.
+addEventListener('pagehide', event => { if (!event.persisted) gl?.getExtension('WEBGL_lose_context')?.loseContext(); });
+
+function fail(err) {
   console.error(err);
   body.classList.add('ready');
   const message = document.getElementById('error');
   message.textContent = err.message;
   message.hidden = false;
-});
+}
+boot().catch(fail);

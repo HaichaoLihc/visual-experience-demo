@@ -1,17 +1,25 @@
 export function createGLHelpers(gl) {
   function compile(type, src) {
     const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
-    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src.split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n'));
     return s;
   }
+  // Compiling and linking go on in the background; finish() waits for the result only when it is needed,
+  // so the page can load its photographs meanwhile.
   function program(vs, fs) {
-    const p = gl.createProgram();
-    gl.attachShader(p, compile(gl.VERTEX_SHADER, vs)); gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+    const p = gl.createProgram(), src = [vs, fs], shaders = [compile(gl.VERTEX_SHADER, vs), compile(gl.FRAGMENT_SHADER, fs)];
+    for (const s of shaders) gl.attachShader(p, s);
     gl.linkProgram(p);
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return { p, u: null, src, shaders };
+  }
+  function finish(prog) {
+    const { p, src, shaders } = prog;
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+      shaders.forEach((s, k) => { if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + '\n' + src[k].split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n')); });
+      throw new Error(gl.getProgramInfoLog(p));
+    }
     const u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(p, i).name; u[name.replace('[0]', '')] = gl.getUniformLocation(p, name); }
-    return { p, u };
+    prog.u = u;
   }
   function dataTexture(w, h, data) {
     const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
@@ -40,5 +48,5 @@ export function createGLHelpers(gl) {
     return { fb, tex, w, h };
   }
   function freeTarget(t) { if (t) { gl.deleteFramebuffer(t.fb); gl.deleteTexture(t.tex); } }
-  return { program, dataTexture, updateTexture, target, freeTarget };
+  return { program, finish, dataTexture, updateTexture, target, freeTarget };
 }

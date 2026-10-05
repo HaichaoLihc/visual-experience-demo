@@ -44,6 +44,8 @@ const srgb = (hex) => { const c = new THREE.Color(hex).getRGB({}, THREE.SRGBColo
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const smooth = (t) => t * t * (3 - 2 * t);
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+// exponential approach that lands exactly on the target (so finished fades stop re-uploading)
+const ease = (v, target, k) => { v += (target - v) * k; return Math.abs(target - v) < 1e-4 ? target : v; };
 
 // Same drift as GLSL swayAt(); keeps JS-driven cards on the shader-driven threads.
 function swayAt(t, phase, amp, out) {
@@ -94,14 +96,52 @@ export class CanopyScene {
     this.listeners = {};
     this._tmp2 = new THREE.Vector2();
     this._v = new THREE.Vector3();
-    this._frames = [];
+    // scratch objects reused every frame (no per-frame allocations)
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._s = new THREE.Vector3();
+    this._p = new THREE.Vector3();
+    this._sw = new THREE.Vector2();
+    this._flightTarget = new THREE.Vector3();
+    this._flightOff = new THREE.Vector3();
+    this._flightSph = new THREE.Spherical();
+    this._frameSum = 0;
+    this._frameCount = 0;
+    this._warmup = 0;
+    this._good = 0;
+    this._upAfter = 4;
+
+    // The loop runs only while the work is on screen; see setRunning().
+    this.running = false;
+    this.contextLost = false;
+    this._wantRunning = false;
+    this._pausedAt = performance.now();
+    this._loop = () => {
+      this._raf = requestAnimationFrame(this._loop);
+      this.frame();
+    };
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     renderer.toneMapping = THREE.NoToneMapping;
-    this.maxDpr = Math.min(window.devicePixelRatio || 1, 2);
+    // The shaders are fixed; reading back their compile logs stalls the first frame ~40 ms.
+    renderer.debug.checkShaderErrors = false;
+    // MSAA at 1.5x looks the same as 2x on a retina screen at ~half the pixels.
+    this.maxDpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.dpr = this.maxDpr;
     renderer.setPixelRatio(this.dpr);
     this.renderer = renderer;
+    // three.js already allows the context to be restored; just stop drawing meanwhile.
+    canvas.addEventListener('webglcontextlost', () => {
+      this.contextLost = true;
+      this.setRunning(this._wantRunning);
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      this.emit('contextrestored');
+    });
+    // An empty white map until the photo arrives: card shaders compile once, up front.
+    this.blankMap = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    this.blankMap.needsUpdate = true;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(BG_HEX);
@@ -137,15 +177,19 @@ export class CanopyScene {
 
     this.raycaster = new THREE.Raycaster();
 
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  // The room and everything that does not depend on the photos. Separate from the
+  // constructor (which creates the WebGL context) to keep start-up tasks short.
+  buildRoom() {
     this._buildLights();
     this._buildRoom();
     this._buildFloor();
     this._buildColumn();
     this._buildCarpet();
     this._buildLightVolume();
-
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
   }
 
   on(name, fn) { (this.listeners[name] ||= []).push(fn); }
@@ -162,7 +206,8 @@ export class CanopyScene {
     this._buildCrystals();
     this._buildCards();
     this._buildPhotoThreads();
-    this.recolorCarpet();
+    this._pickables = [...this.plateHits, this.anchors, this.pompoms];
+    this.recolorCarpet(); // palettes come with photos.json; see main.js for photos without one
     this.resize();
   }
 
@@ -822,7 +867,8 @@ export class CanopyScene {
       -x, -y, z, x, -y, z, x, y, z, -x, y, z,
       x, -y, -z, -x, -y, -z, -x, y, -z, x, y, -z,
     ];
-    const uv = [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1];
+    // v runs top-down: photos are uploaded unflipped (flipY = false), the same for <img> and ImageBitmap
+    const uv = [0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0];
     const idx = [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7];
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -893,7 +939,7 @@ export class CanopyScene {
     const loading = new THREE.Color(0x26252a);
     this.cards = this.photos.map((p, i) => {
       const g = new THREE.Group();
-      const mat = new THREE.MeshBasicMaterial({ color: loading.clone(), fog: true });
+      const mat = new THREE.MeshBasicMaterial({ color: loading.clone(), fog: true, map: this.blankMap });
       const photoMesh = new THREE.Mesh(this._cardGeometry(p.w, p.h), mat);
       const plate = new THREE.Mesh(new THREE.BoxGeometry(p.w + 0.05, p.h + 0.05, 0.026), this._plateMaterial(new THREE.Vector3(...srgb(p.story.color))));
       plate.userData.photo = p;
@@ -914,14 +960,32 @@ export class CanopyScene {
     this.scene.add(this.photoThreads.mesh);
   }
 
-  setPhotoTexture(photo, texture) {
+  // `image` is an ImageBitmap (or an <img> where createImageBitmap is missing).
+  setPhotoTexture(photo, image) {
     const card = this.cards.find((c) => c.photo === photo);
     if (!card) return;
+    const texture = new THREE.Texture(image);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.flipY = false; // see _cardGeometry
     texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    texture.needsUpdate = true;
+    // upload now, in its own task, rather than all at once in a later frame
+    this.renderer.initTexture(texture);
+    if (image.close) image.close(); // the GPU has its copy; free the decoded bitmap
+    if (card.mat.map !== this.blankMap) card.mat.map.dispose();
     card.mat.map = texture;
     card.mat.needsUpdate = true;
     card.loaded = true;
+  }
+
+  // After a lost context the closed bitmaps cannot be uploaded again: show blank
+  // cards until main.js has loaded the photos anew.
+  resetPhotoTextures() {
+    for (const card of this.cards) {
+      if (card.mat.map !== this.blankMap) card.mat.map.dispose();
+      card.mat.map = this.blankMap;
+      card.loaded = false;
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -1046,10 +1110,10 @@ export class CanopyScene {
     if (!f) return;
     const k = clamp((now - f.start) / f.dur, 0, 1);
     const e = easeInOut(k);
-    const target = new THREE.Vector3().lerpVectors(f.t0, f.t1, e);
+    const target = this._flightTarget.lerpVectors(f.t0, f.t1, e);
     const r = Math.exp(lerp(Math.log(f.s0.radius), Math.log(f.s1.radius), e));
-    const sph = new THREE.Spherical(r, lerp(f.s0.phi, f.s1.phi, e), f.s0.theta + f.dTheta * e);
-    const off = new THREE.Vector3().setFromSpherical(sph);
+    const sph = this._flightSph.set(r, lerp(f.s0.phi, f.s1.phi, e), f.s0.theta + f.dTheta * e);
+    const off = this._flightOff.setFromSpherical(sph);
     this.camera.position.copy(target).add(off);
     this.controls.target.copy(target);
     this.camera.lookAt(target);
@@ -1086,10 +1150,10 @@ export class CanopyScene {
   // -------------------------------------------------------------------------
   pick(clientX, clientY) {
     if (!this.plateHits) return null;
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.rect; // measured on resize: no layout read per pick
     this._tmp2.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this._tmp2, this.camera);
-    const hits = this.raycaster.intersectObjects([...this.plateHits, this.anchors, this.pompoms], false);
+    const hits = this.raycaster.intersectObjects(this._pickables, false);
     for (const h of hits) {
       if (h.object.userData.photo) return { photo: h.object.userData.photo, kind: 'photo' };
       if ((h.object === this.anchors || h.object === this.pompoms) && h.instanceId != null) return { photo: this.photos[h.instanceId], kind: 'umbrella' };
@@ -1122,28 +1186,102 @@ export class CanopyScene {
       this.sparkles.material.uniforms.uMaxSize.value = 70 * this.dpr;
     }
     this._applyInset(1);
+    this.rect = this.canvas.getBoundingClientRect();
+    this.redraw(); // resizing clears the canvas
   }
 
-  _adaptQuality(now, dt) {
-    // Drop resolution on slow devices; never above the device ratio or 2.
-    this._frames.push(dt);
-    if (this._frames.length < 90) return;
-    const avg = this._frames.reduce((a, b) => a + b, 0) / this._frames.length;
-    this._frames.length = 0;
-    const fps = 1 / avg;
-    if (fps < 42 && this.dpr > 1) {
-      this.dpr = Math.max(1, this.dpr - 0.25);
-      this.renderer.setPixelRatio(this.dpr);
-      this.resize();
+  // Redraw the still while paused (the running loop draws anyway).
+  redraw() {
+    if (this._drawn && !this.running && !this.contextLost) this.renderer.render(this.scene, this.camera);
+  }
+
+  // Compile every shader in parallel (KHR_parallel_shader_compile) instead of
+  // stalling the first frame on them.
+  compile() {
+    return this.renderer.compileAsync(this.scene, this.camera).catch(() => {});
+  }
+
+  _adaptQuality(dt) {
+    // Follow the frame rate in both directions, between 1 and maxDpr. Only frames
+    // drawn while running count, minus the first ones after a (re)start or a change.
+    if (this._warmup > 0) { this._warmup--; return; }
+    this._frameSum += dt;
+    if (++this._frameCount < 90) return;
+    const fps = this._frameCount / this._frameSum;
+    this._frameSum = 0;
+    this._frameCount = 0;
+    let dpr = this.dpr;
+    if (fps < 42 && dpr > 1) {
+      dpr = Math.max(1, dpr - 0.25);
+      this._upAfter = Math.min(this._upAfter * 2, 64); // back off if it keeps flip-flopping
+      this._good = 0;
+    } else if (fps > 55 && dpr < this.maxDpr) {
+      if (++this._good >= this._upAfter) { dpr = Math.min(this.maxDpr, dpr + 0.25); this._good = 0; }
+    } else {
+      this._good = 0;
+    }
+    if (dpr === this.dpr) return;
+    this.dpr = dpr;
+    this.renderer.setPixelRatio(dpr);
+    this.resize();
+    this._warmup = 30;
+  }
+
+  // -------------------------------------------------------------------------
+  // Run state: main.js runs the loop only while the work is on screen.
+  // -------------------------------------------------------------------------
+  setRunning(on) {
+    this._wantRunning = on;
+    on = on && this._drawn && !this.contextLost;
+    if (on === this.running) return;
+    this.running = on;
+    const now = performance.now();
+    if (on) {
+      // carry on where it paused: no jump in time, flights resume, and the
+      // paused time does not count as idle time for the auto-rotate
+      const paused = now - this._pausedAt;
+      if (this.flight) this.flight.start += paused;
+      this.lastInteraction += paused;
+      this._last = now;
+      this._warmup = 20;
+      this._frameSum = 0;
+      this._frameCount = 0;
+      this._raf = requestAnimationFrame(this._loop);
+    } else {
+      cancelAnimationFrame(this._raf);
+      this._pausedAt = now;
     }
   }
 
-  start() {
-    const loop = () => {
-      this._raf = requestAnimationFrame(loop);
-      this.frame();
-    };
-    loop();
+  // Nothing is drawn behind the loader, but the opening view should look as if it
+  // had been: run the frame updates (camera limits, cards turning toward the
+  // viewer) for a moment without rendering.
+  settle(seconds = 1.5) {
+    const dt = 1 / 60;
+    for (let i = 0; i < seconds * 60; i++) {
+      this.time += this.reducedMotion ? 0 : dt;
+      this._applyInset(dt);
+      this.controls.update(dt);
+      this._clampCamera();
+      this._updateCards(dt);
+    }
+  }
+
+  // Draw one complete frame now (also while paused), then wait for setRunning().
+  renderFirst() {
+    this._last = performance.now() - 1000 / 60;
+    this.frame();
+    this._drawn = true;
+    this._pausedAt = performance.now();
+  }
+
+  // pagehide: give the GPU memory back right away (restored on pageshow from bfcache)
+  releaseContext() {
+    this.setRunning(false);
+    if (!this.contextLost) this.renderer.forceContextLoss();
+  }
+  restoreContext() {
+    if (this.contextLost) this.renderer.forceContextRestore();
   }
 
   frame() {
@@ -1152,7 +1290,7 @@ export class CanopyScene {
     this._last = now;
     this.time += this.reducedMotion ? 0 : dt;
     this.common.uTime.value = this.time;
-    if (!document.hidden) this._adaptQuality(now, dt);
+    if (this.running) this._adaptQuality(dt);
 
     this._applyInset(dt);
     if (this.flight) this._updateFlight(now);
@@ -1182,19 +1320,21 @@ export class CanopyScene {
     const ky = 1 - Math.exp(-dt * 2.6);
     const amp = this.common.uSway.value;
     const cam = this.camera.position;
-    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-    const sw = this._tmp2.clone();
+    const m = this._m, q = this._q, s = this._s, p = this._p, sw = this._sw;
     const hiArr = this.photoThreads.hi, dimArr = this.photoThreads.dim;
     const aHi = this.anchors.geometry.attributes.aHi, aDim = this.anchors.geometry.attributes.aDim;
     const pHi = this.pompoms.geometry.attributes.aHi, pDim = this.pompoms.geometry.attributes.aDim;
+    let fadesChanged = false;
     for (const card of this.cards) {
       const ph = card.photo;
       const hiT = ph === this.hovered || ph === this.selected ? 1 : 0;
       const dimT = this.focusStory && ph.story !== this.focusStory ? 1 : this.selected && ph !== this.selected ? 0.45 : 0;
       const memT = this.focusStory && ph.story === this.focusStory ? 1 : 0;
-      card.hi += (hiT - card.hi) * k;
-      card.dim += (dimT - card.dim) * k;
-      card.member = (card.member || 0) + (memT - (card.member || 0)) * k;
+      const hi = ease(card.hi, hiT, k), dim = ease(card.dim, dimT, k);
+      if (hi !== card.hi || dim !== card.dim) fadesChanged = true;
+      card.hi = hi;
+      card.dim = dim;
+      card.member = ease(card.member || 0, memT, k);
 
       const lenCap = ph.anchorY - ph.capY;
       swayAt(t, ph.phase, amp, sw);
@@ -1242,13 +1382,16 @@ export class CanopyScene {
     if (sel) this.common.uFocusPos.value.copy(sel.group.position);
     const fk = 1 - Math.exp(-dt * 4);
     this.common.uFocusOn.value += ((sel ? 1 : 0) - this.common.uFocusOn.value) * fk;
-    this.caps.instanceMatrix.needsUpdate = true;
-    this.photoThreads.geo.attributes.aHi.needsUpdate = true;
-    this.photoThreads.geo.attributes.aDim.needsUpdate = true;
-    aHi.needsUpdate = true;
-    aDim.needsUpdate = true;
-    pHi.needsUpdate = true;
-    pDim.needsUpdate = true;
+    // re-upload only what changed: the caps move with the sway, the fades only while easing
+    if (amp > 0 || fadesChanged) this.caps.instanceMatrix.needsUpdate = true;
+    if (fadesChanged) {
+      this.photoThreads.geo.attributes.aHi.needsUpdate = true;
+      this.photoThreads.geo.attributes.aDim.needsUpdate = true;
+      aHi.needsUpdate = true;
+      aDim.needsUpdate = true;
+      pHi.needsUpdate = true;
+      pDim.needsUpdate = true;
+    }
   }
 
   stats() {

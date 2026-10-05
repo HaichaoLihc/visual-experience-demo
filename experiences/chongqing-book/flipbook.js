@@ -1,5 +1,11 @@
+// The platform feed listens for this work's hello and its first finished frame.
+const embedded = parent !== window;
+if (embedded) parent.postMessage({ type: "platform:hello" }, "*");
+
 const bookElement = document.querySelector("#book");
 const pages = bookElement.querySelectorAll(".book-page");
+const pageImages = [...pages].map((page) => page.querySelector("img"));
+const preparedImages = new Set();
 const previousButton = document.querySelector("#previous");
 const nextButton = document.querySelector("#next");
 const pageStatus = document.querySelector("#page-status");
@@ -49,13 +55,30 @@ function updateControls() {
   }
 }
 
+// Pages after the cover load lazily. The spreads around the open page are fetched and decoded
+// ahead of time, so a turn never reveals a page that is still loading.
+function preparePages(center) {
+  const nearby = [];
+  for (let index = center - 4; index <= center + 6; index += 1) nearby.push(index);
+  nearby.push(pageImages.length - 1);
+  for (const index of nearby) {
+    const image = pageImages[index];
+    if (!image || preparedImages.has(image)) continue;
+    preparedImages.add(image);
+    image.loading = "eager";
+    image.decode().catch(() => {});
+  }
+}
+
 pageFlip.on("flip", (event) => {
   currentPage = Number(event.data);
+  preparePages(currentPage);
   updateControls();
 });
 
 pageFlip.on("changeState", (event) => {
   isTurning = event.data !== "read";
+  if (isTurning) preparePages(currentPage);
   updateControls();
 });
 
@@ -72,6 +95,13 @@ pageFlip.on("changeOrientation", (event) => updateOrientation(event.data));
 
 pageFlip.loadFromHTML(pages);
 updateControls();
+preparePages(0);
+
+if (embedded) {
+  pageImages[0].decode().catch(() => {}).then(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => parent.postMessage({ type: "platform:ready" }, "*")));
+  });
+}
 
 previousButton.addEventListener("click", () => {
   if (!isTurning) pageFlip.flipPrev("bottom");

@@ -33,6 +33,18 @@ const pageFlip = new St.PageFlip(bookElement, {
 let currentPage = 0;
 let isTurning = false;
 
+// Leaves load as the reader approaches them: the open spread plus the next two.
+function loadAround(index) {
+  pages.forEach((page, i) => {
+    const image = page.querySelector("img[data-src]");
+    if (!image || i < index - 2 || i > index + 5) return;
+    image.src = image.dataset.src;
+    image.removeAttribute("data-src");
+    image.decode?.().catch(() => {});
+  });
+}
+loadAround(0);
+
 function updateControls() {
   const pageCount = pageFlip.getPageCount();
   const lastPage = pageCount - 1;
@@ -51,6 +63,7 @@ function updateControls() {
 
 pageFlip.on("flip", (event) => {
   currentPage = Number(event.data);
+  loadAround(currentPage);
   updateControls();
 });
 

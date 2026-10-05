@@ -119,7 +119,6 @@ button:active {
   height: 44px;
   padding: 0 18px;
   font-size: 14px;
-  backdrop-filter: blur(14px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -204,7 +203,6 @@ button:active {
   padding: 10px 16px;
   border-radius: 6px;
   font-size: 12px;
-  backdrop-filter: blur(15px);
 }
 .controls-hint span {
   display: flex;
@@ -340,6 +338,11 @@ dialog {
 dialog::backdrop {
   background: #102a24aa;
   backdrop-filter: blur(8px);
+}
+/* These dialogs are opaque and full screen; nothing behind them shows. */
+#inspector::backdrop,
+#book-reader::backdrop {
+  backdrop-filter: none;
 }
 #inspector {
   position: fixed;
@@ -1595,5 +1598,6 @@ dl > div {
 
 /* Platform edition: an uninterrupted scene with only movement keycaps. */
 #target, #toast { display: none !important; }
-.controls-hint { gap: 6px; padding: 8px 10px; border-radius: 10px; background: #25332980; }
+/* A solid tint instead of a frosted blur: blurring the live canvas every frame cost ~15% of frame time. */
+.controls-hint { gap: 6px; padding: 8px 10px; border-radius: 10px; background: #2533298c; }
 .controls-hint kbd { min-width: 22px; height: 22px; border-color: #ffffff40; font-size: 10px; }

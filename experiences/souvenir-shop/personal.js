@@ -113,6 +113,8 @@ export const PERSONAL_CATALOG = Object.fromEntries(
 export const PERSONAL_TYPES = Object.keys(PERSONAL_CATALOG);
 const source = (textures, n) => artForPhoto(textures, n);
 const generated = (textures, n) => textures["prototype-" + n];
+// Only these prototypes are printed onto geometry; the rest stay in the collection tray.
+export const PRINTED_PROTOTYPES = [2, 3, 8, 9];
 // The printed silhouette uses the finished prototype as its UV artwork.
 // Real beveled geometry supplies edges, thickness and back faces.
 export function photoShape(

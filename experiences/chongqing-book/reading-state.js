@@ -36,8 +36,8 @@
   };
 
   if (!document.querySelector('#book') || typeof pageFlip === 'undefined') return;
+  // This demo has no grid view, so the back link keeps its gallery target in both cases.
   const fromGrid = new URLSearchParams(location.search).get('from') === 'grid';
-  if (fromGrid) document.querySelector('.back-link').href = new URL('grid.html', root).href;
   const last = pageFlip.getPageCount() - 1;
   const previous = get(location.href);
   const save = page => {

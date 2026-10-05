@@ -9,7 +9,9 @@ export function mat(color, roughness = 0.55, metalness = 0) {
   return cache.get(k);
 }
 const cube = new T.BoxGeometry(1, 1, 1),
-  ball = new T.SphereGeometry(1, 24, 16);
+  ball = new T.SphereGeometry(1, 24, 16),
+  // Centimetre-scale spots, eyes and beads look the same with fewer facets.
+  bead = new T.SphereGeometry(1, 16, 8);
 export function mesh(p, g, m, x = 0, y = 0, z = 0) {
   const o = new T.Mesh(g, m);
   o.position.set(x, y, z);
@@ -24,7 +26,7 @@ export function box(p, w, h, d, x, y, z, m) {
   return o;
 }
 export function sphere(p, rx, ry, rz, x, y, z, m) {
-  const o = mesh(p, ball, m, x, y, z);
+  const o = mesh(p, Math.max(rx, ry, rz) <= 0.012 ? bead : ball, m, x, y, z);
   o.scale.set(rx, ry, rz);
   return o;
 }
