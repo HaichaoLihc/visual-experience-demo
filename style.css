@@ -15,8 +15,6 @@ svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.4;stroke
 .view-nav a:hover{color:var(--ink)}
 .view-nav a[aria-current=page]{background:#fff;color:var(--ink);box-shadow:0 1px 4px #1822190a}
 .header-actions{justify-self:end;display:flex;align-items:center;gap:14px}
-.upload{height:32px;padding:0 14px;border:1px solid var(--line);border-radius:9px;font-size:12px;background:#ffffff40}
-.upload:hover{background:#fff}
 .profile{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:#e9ece4;color:#65735d}
 .profile svg{width:17px;height:17px}
 .profile:hover,.profile.selected{background:#e0e6d7}
@@ -69,7 +67,6 @@ html:has(.profile-page),html:has(.gallery-route){overflow-y:auto}
  .header-actions{gap:10px;grid-column:2;grid-row:1}
  .view-nav{grid-row:2;grid-column:1 / -1;justify-self:center;padding:3px}
  .view-nav a{height:26px;min-width:78px;font-size:11px}
- .upload{height:28px;padding:0 11px;font-size:11px}
  .profile{height:28px;width:28px}
  .gallery-page{padding:20px 16px 30px}
  .gallery-heading{margin-bottom:20px}

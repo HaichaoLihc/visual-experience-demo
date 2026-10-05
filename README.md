@@ -14,7 +14,7 @@ In Flow, use Prev / Next beside Use to browse. You can also drag or swipe the fo
 
 Apps are interactive immediately. Their internal drag, scroll, keyboard, and touch controls remain available; feed navigation lives outside the app viewport. The selected work and its immediate neighbors stay mounted through transitions; other frames are removed. Inactive frames are excluded from keyboard focus and the accessibility tree. Reduced-motion preferences skip slide animation.
 
-The platform adds no loading overlay, artificial delay, or opacity transition to the embedded website. Navigation and actions remain outside the app viewport. Use and Upload remain visual placeholders.
+The platform adds no loading overlay, artificial delay, or opacity transition to the embedded website. Navigation and actions remain outside the app viewport. Use remains a visual placeholder.
 
 ## Imported experiences
 
