@@ -1,6 +1,5 @@
 const stage = document.querySelector('.flow-stage');
 const feed = document.querySelector('.flow-page');
-const position = document.querySelector('.flow-position');
 const cards = new Map();
 const count = experienceCatalog.length;
 const wrap = value => (value % count + count) % count;
@@ -12,22 +11,11 @@ let wheelAmount = 0;
 let wheelTime = 0;
 let wheelBlockedUntil = 0;
 let mountToken = 0;
-let stageWidth = stage.clientWidth;
+let stageHeight = stage.clientHeight;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const distance = () => stageWidth + 16;
-
-const dots = experienceCatalog.map((work, i) => {
-  const dot = document.createElement('button');
-  dot.type = 'button';
-  dot.setAttribute('aria-label', `View ${work.title}`);
-  dot.addEventListener('click', () => {
-    const forward = wrap(i - index);
-    const backward = wrap(index - i);
-    if (forward) navigate(forward <= backward ? forward : -backward);
-  });
-  position.append(dot);
-  return dot;
-});
+// Works are stacked vertically; each sits one stage height (plus a gap) from the next.
+const distance = () => stageHeight + 16;
+const at = y => `translate3d(0, ${y}px, 0)`;
 
 function makeCard(i, offset) {
   const work = experienceCatalog[i];
@@ -61,7 +49,7 @@ function makeCard(i, offset) {
 
 function place(card, offset) {
   card.dataset.offset = offset;
-  card.style.transform = `translate3d(${offset * distance()}px, 0, 0)`;
+  card.style.transform = at(offset * distance());
   card.inert = offset !== 0;
   card.querySelector('iframe').inert = offset !== 0;
   card.setAttribute('aria-hidden', String(offset !== 0));
@@ -193,9 +181,6 @@ function arrange() {
   document.querySelector('.flow-number').textContent = String(index + 1).padStart(2, '0');
   document.querySelector('.flow-title').textContent = work.title;
   window.sourceCopy.setExperience(work.id);
-  dots.forEach((dot, i) => {
-    dot.setAttribute('aria-current', i === index ? 'true' : 'false');
-  });
   history.replaceState(null, '', `./?experience=${encodeURIComponent(work.id)}`);
   document.title = `${work.title} — Flow`;
 }
@@ -206,24 +191,15 @@ async function navigate(step, displacement = 0) {
   for (const [i, card] of cards) card.querySelector('iframe').inert = moving || i !== index;
   const direction = Math.sign(step);
   const next = wrap(index + step);
-  // Dot navigation also moves whole works, without flashing intervening apps.
-  if (Math.abs(step) > 1) {
-    for (const card of cards.values()) {
-      if (Number(card.dataset.offset) === direction) card.style.visibility = 'hidden';
-    }
-  }
   const target = cards.get(next) || makeCard(next, direction);
-  target.dataset.offset = direction;
-  target.style.visibility = 'visible';
-  target.style.transform = `translate3d(${direction * distance()}px, 0, 0)`;
   // The incoming work resumes as it slides in; the outgoing one holds its last frame.
   setActive(cards.get(index), false);
   setActive(target, true);
-  const animations = [...cards.values()].filter(card => card.style.visibility !== 'hidden').map(card => {
+  const animations = [...cards.values()].map(card => {
     const start = Number(card.dataset.offset) * distance();
     return card.animate([
-      { transform: `translate3d(${start + displacement}px, 0, 0)` },
-      { transform: `translate3d(${start - direction * distance()}px, 0, 0)` },
+      { transform: at(start + displacement) },
+      { transform: at(start - direction * distance()) },
     ], { duration: reducedMotion.matches ? 0 : 480, easing: 'cubic-bezier(.22,.8,.22,1)', fill: 'forwards' });
   });
   await Promise.all(animations.map(animation => animation.finished));
@@ -231,21 +207,20 @@ async function navigate(step, displacement = 0) {
   lastInteraction = performance.now();
   arrange();
   animations.forEach(animation => animation.cancel());
-  for (const card of cards.values()) card.style.visibility = '';
   moving = false;
 }
 
 feed.addEventListener('pointerdown', event => {
   if (moving || !event.isPrimary || event.button !== 0 || event.target.closest('button, a, iframe')) return;
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, dx: 0, time: performance.now() };
+  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, dy: 0, time: performance.now() };
   stage.setPointerCapture(event.pointerId);
   stage.classList.add('is-dragging');
 });
 feed.addEventListener('pointermove', event => {
   if (!drag || drag.id !== event.pointerId) return;
-  drag.dx = event.clientX - drag.x;
+  drag.dy = event.clientY - drag.y;
   for (const card of cards.values()) {
-    card.style.transform = `translate3d(${Number(card.dataset.offset) * distance() + drag.dx}px, 0, 0)`;
+    card.style.transform = at(Number(card.dataset.offset) * distance() + drag.dy);
   }
 });
 async function endDrag(event, cancelled = false) {
@@ -254,23 +229,23 @@ async function endDrag(event, cancelled = false) {
   drag = null;
   stage.classList.remove('is-dragging');
   if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
-  const dy = event.clientY - gesture.y;
-  const horizontal = Math.abs(gesture.dx) >= Math.abs(dy);
-  const delta = horizontal ? gesture.dx : dy;
-  const threshold = Math.min(120, stage.clientWidth * .16);
+  const dx = event.clientX - gesture.x;
+  // Swiping up shows the next work; a sideways swipe also browses.
+  const delta = Math.abs(gesture.dy) >= Math.abs(dx) ? gesture.dy : dx;
+  const threshold = Math.min(120, stage.clientHeight * .16);
   const flick = Math.abs(delta) > 36 && performance.now() - gesture.time < 300;
   if (!cancelled && (Math.abs(delta) > threshold || flick)) {
-    await navigate(delta < 0 ? 1 : -1, gesture.dx);
+    await navigate(delta < 0 ? 1 : -1, gesture.dy);
   } else {
     moving = true;
     const animations = [...cards.values()].map(card => {
       const end = Number(card.dataset.offset) * distance();
       return card.animate([
-        { transform: `translate3d(${end + gesture.dx}px, 0, 0)` },
-        { transform: `translate3d(${end}px, 0, 0)` },
+        { transform: at(end + gesture.dy) },
+        { transform: at(end) },
       ], { duration: reducedMotion.matches ? 0 : 220, easing: 'ease-out' });
     });
-    for (const card of cards.values()) card.style.transform = `translate3d(${Number(card.dataset.offset) * distance()}px, 0, 0)`;
+    for (const card of cards.values()) card.style.transform = at(Number(card.dataset.offset) * distance());
     await Promise.all(animations.map(animation => animation.finished));
     moving = false;
   }
@@ -310,7 +285,7 @@ window.addEventListener('popstate', () => {
   if (!moving && found >= 0) { index = found; arrange(); }
 });
 new ResizeObserver(() => {
-  stageWidth = stage.clientWidth;
-  if (!moving && !drag) for (const card of cards.values()) card.style.transform = `translate3d(${Number(card.dataset.offset) * distance()}px, 0, 0)`;
+  stageHeight = stage.clientHeight;
+  if (!moving && !drag) for (const card of cards.values()) card.style.transform = at(Number(card.dataset.offset) * distance());
 }).observe(stage);
 arrange();

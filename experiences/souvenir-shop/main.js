@@ -140,14 +140,33 @@ async function init() {
       flips = bitmapsFlip();
     const textures = {};
     let loaded = 0;
+    // One failed request (a busy server, a dropped connection) must not stop the
+    // whole shop: retry, then fall back to a blank texture.
+    const attempt = async (load) => {
+      for (let i = 1; ; i++) {
+        try {
+          return await load();
+        } catch (err) {
+          if (i === 3) return console.warn("Texture unavailable", err), null;
+          await new Promise((r) => setTimeout(r, 400 * i));
+        }
+      }
+    };
+    const blank = () =>
+      new THREE.CanvasTexture(
+        Object.assign(document.createElement("canvas"), { width: 2, height: 2 }),
+      );
     await Promise.all(
       sources.map(async ([key, path, gpuOnly]) => {
         if (gpuOnly && (await flips)) {
           // Pre-flipped bitmap: same orientation as a flipY image upload.
-          textures[key] = new THREE.Texture(await bitmaps.loadAsync(path));
+          const bitmap = await attempt(() => bitmaps.loadAsync(path));
+          textures[key] = bitmap ? new THREE.Texture(bitmap) : blank();
           textures[key].flipY = false;
           textures[key].needsUpdate = true;
-        } else textures[key] = await loader.loadAsync(path);
+        } else
+          textures[key] =
+            (await attempt(() => loader.loadAsync(path))) || blank();
         textures[key].colorSpace = THREE.SRGBColorSpace;
         if (key.startsWith("art-"))
           textures[key].userData.tripArtwork =
@@ -250,8 +269,9 @@ async function init() {
     syncRunning();
   } catch (err) {
     console.error("Shop initialization failed", err);
-    $("load-status").textContent =
-      "The shop could not open. Use a browser with WebGL 2 and reload.";
+    $("load-status").textContent = renderer
+      ? "The shop could not finish loading. Reload to try again."
+      : "The shop could not open. Use a browser with WebGL 2 and reload.";
     const retry = document.createElement("button");
     retry.className = "primary-button";
     retry.style.width = "180px";

@@ -1,9 +1,7 @@
 const grid = document.querySelector('.gallery-grid');
-const includedIds = grid.dataset.experiences?.split(',');
-const experiences = includedIds ? experienceCatalog.filter(experience => includedIds.includes(experience.id)) : experienceCatalog;
 const collectionCount = document.querySelector('.collection-count');
-if (collectionCount) collectionCount.textContent = `${String(experiences.length).padStart(2, '0')} works`;
-for (const experience of experiences) {
+if (collectionCount) collectionCount.textContent = `${String(experienceCatalog.length).padStart(2, '0')} works`;
+for (const experience of experienceCatalog) {
   const card = document.createElement('a');
   card.className = 'gallery-card';
   card.href = `flow.html?experience=${encodeURIComponent(experience.id)}`;

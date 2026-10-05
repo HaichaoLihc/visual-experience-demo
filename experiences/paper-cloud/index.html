@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Paper Cloud</title>
+  <meta name="description" content="Photographs printed on cotton paper and hung as a cloud above a circle of broken mirror.">
+  <meta name="theme-color" content="#7c7a76">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='5' width='14' height='11' fill='%23e9e5dc'/%3E%3Crect x='14' y='14' width='14' height='11' fill='%23cfc9bd'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene" tabindex="0" aria-label="A cloud of paper prints hanging above a circle of broken mirror. Drag to walk around it, scroll or pinch to move closer, and select a print to look at it. Arrow keys step through the prints; Escape steps back."></canvas>
+  <div id="caption" class="caption" hidden>
+    <button id="prev" type="button" aria-label="Previous photo">‹</button>
+    <p role="status"><strong id="title"></strong><span id="credit"></span><a id="source" target="_blank" rel="noopener">Source ↗</a></p>
+    <button id="next" type="button" aria-label="Next photo">›</button>
+    <button id="close" type="button" aria-label="Back to the whole installation">×</button>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

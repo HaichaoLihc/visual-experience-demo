@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f5f4f1">
   <title>Flow — placeholder</title>
-  <link rel="stylesheet" href="style.css?v=photo-prompt">
+  <link rel="stylesheet" href="style.css?v=coming-soon">
 </head>
 <body class="flow-route">
   <header class="header">
@@ -15,26 +15,28 @@
       <a href="explore.html">Explore</a>
     </nav>
     <div class="header-actions">
-      <a class="profile" href="profile.html" aria-label="Profile">
+      <button class="profile" type="button" aria-label="Profile" aria-haspopup="dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5.5 20v-1.5a6.5 6.5 0 0 1 13 0V20"/></svg>
-      </a>
+      </button>
     </div>
   </header>
   <main class="flow-page" aria-label="Experience feed">
     <div class="flow-stage" tabindex="0" role="region" aria-label="Swipe or scroll to browse experiences" aria-roledescription="carousel" aria-describedby="flow-help"></div>
     <footer class="flow-footer">
       <div class="flow-caption" aria-live="polite"><span class="flow-number"></span><span class="flow-title"></span></div>
-      <div class="flow-position" aria-label="Choose an experience"></div>
+      <nav class="flow-nav" aria-label="Browse experiences">
+        <button class="feed-prev" type="button" aria-label="Previous experience"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>Prev</button>
+        <button class="feed-next" type="button" aria-label="Next experience">Next<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      </nav>
       <div class="flow-actions">
-        <button class="feed-prev" type="button" aria-label="Previous experience">Prev</button>
-        <button class="feed-next" type="button" aria-label="Next experience">Next</button>
         <button class="use" type="button" aria-haspopup="dialog">Use<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></button>
       </div>
     </footer>
     <span class="sr-only" id="flow-help">Use Previous or Next to browse. You can also swipe or scroll below the work, or use arrow keys while the feed has focus. Each work’s own controls are always available.</span>
   </main>
-  <script src="experiences.js?v=photo-prompt"></script>
-  <script src="copy-source.js?v=photo-prompt"></script>
-  <script src="flow.js?v=smooth-feed"></script>
+  <script src="experiences.js?v=canopy-first"></script>
+  <script src="profile.js?v=coming-soon"></script>
+  <script src="copy-source.js?v=minimal-prompt"></script>
+  <script src="flow.js?v=vertical-feed"></script>
 </body>
 </html>

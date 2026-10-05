@@ -11,7 +11,7 @@ useDialog.innerHTML = `
     <button class="prompt-copy" type="button" autofocus><span>Copy Prompt</span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3"/></svg></button>
     <a class="source-link" target="_blank" rel="noopener noreferrer">View Source<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
   </div>
-  <div class="copy-manual" hidden><label for="source-prompt">Select and copy this prompt into your agent.</label><textarea id="source-prompt" rows="7" readonly></textarea></div>
+  <div class="copy-manual" hidden><label for="source-prompt">Select and copy this prompt into your agent.</label><textarea id="source-prompt" rows="5" readonly></textarea></div>
   <span class="sr-only" role="status"></span>
 `;
 document.body.append(useDialog);
@@ -23,11 +23,11 @@ let copyFeedbackTimer;
 let copyAttempt = 0;
 
 function createPhotoPrompt(work) {
-  return `Use the following project as a reference to recreate "${work.title}" with my own photos.
+  return `Recreate "${work.title}" with my own photos.
 
-Reference source: ${work.sourceUrl}
+Source: ${work.sourceUrl}
 
-Keep the same visual style, layout, animations, and interactions. Read the project's setup instructions and include any required shared assets. Replace the demo photos with the photos I provide. If I haven't provided photos yet, ask me for them or their folder location. Build a working version, run it locally, and tell me how to open it.`;
+Ask me for the photos if I haven't shared them, then run it locally and tell me how to open it.`;
 }
 
 function resetSourceFeedback() {

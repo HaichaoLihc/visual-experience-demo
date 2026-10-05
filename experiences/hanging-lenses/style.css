@@ -1,0 +1,10 @@
+:root { color-scheme: dark; font: 12px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #3b3a3c; -webkit-font-smoothing: antialiased; }
+#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+#scene.is-pointer { cursor: grab; }
+#scene.is-dragging { cursor: grabbing; }
+
+/* The photograph's title and credit, quiet in a corner. */
+.credit { position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); padding: 6px 11px; border-radius: 999px; background: #1a191b99; color: #f2eee899; text-decoration: none; white-space: nowrap; }
+.credit:hover { color: #f2eee8; background: #1a191bcc; }
+.credit:empty { display: none; }
